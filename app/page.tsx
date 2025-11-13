@@ -27,17 +27,17 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-600 rounded-lg">
-                <Youtube className="w-8 h-8 text-white" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="p-1.5 sm:p-2 bg-red-600 rounded-lg flex-shrink-0">
+                <Youtube className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
                   YouTube Analyzer
                 </h1>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
                   채널 성과를 분석하고 인사이트를 제공합니다
                 </p>
               </div>
@@ -45,9 +45,10 @@ export default function Home() {
             {selectedChannelId && (
               <button
                 onClick={handleReset}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex-shrink-0"
               >
-                새로운 검색
+                <span className="hidden sm:inline">새로운 검색</span>
+                <span className="sm:hidden">검색</span>
               </button>
             )}
           </div>
@@ -58,11 +59,11 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!selectedChannelId ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <div className="text-center mb-6 sm:mb-8 px-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                 분석할 채널을 검색하세요
               </h2>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600">
                 채널 이름을 검색하고 분석을 시작하세요
               </p>
             </div>
@@ -118,8 +119,8 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-gray-600 text-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <p className="text-center text-gray-600 text-xs sm:text-sm">
             YouTube Analyzer - Powered by YouTube Data API v3
           </p>
         </div>
