@@ -28,12 +28,21 @@ YouTube 채널과 비디오를 분석하는 웹 서비스입니다. YouTube Data
 npm install
 ```
 
-### 2. 환경 변수 설정
+### 2. 환경 변수 설정 ⚠️ **필수**
 
-`.env.local` 파일을 생성하고 YouTube API 키를 설정합니다:
+**중요**: 이 애플리케이션을 실행하려면 YouTube API 키가 반드시 필요합니다.
+
+`.env.example` 파일을 복사하여 `.env.local` 파일을 생성합니다:
 
 ```bash
-YOUTUBE_API_KEY=your_youtube_api_key_here
+cp .env.example .env.local
+```
+
+그런 다음 `.env.local` 파일을 열고 `YOUTUBE_API_KEY` 값을 실제 API 키로 교체하세요:
+
+```bash
+# .env.local 파일
+YOUTUBE_API_KEY=your_actual_api_key_here  # 이 값을 실제 API 키로 교체하세요
 ```
 
 YouTube API 키는 [Google Cloud Console](https://console.developers.google.com/)에서 발급받을 수 있습니다.
