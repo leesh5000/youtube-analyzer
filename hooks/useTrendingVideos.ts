@@ -48,7 +48,7 @@ export function useTrendingVideos(
     },
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
-    staleTime: 5 * 60 * 1000, // 5분 동안 캐시 유지
+    staleTime: 30 * 1000, // 30초 동안 캐시 유지 (서버 Redis 캐시가 primary)
     gcTime: 10 * 60 * 1000, // 10분 후 가비지 컬렉션
   });
 }

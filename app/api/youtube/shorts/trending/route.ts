@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getYouTubeClient } from '@/lib/youtube/client';
 import { calculateVideoAnalytics } from '@/lib/youtube/analytics';
+import { withCache, CacheKey, CacheTTL } from '@/lib/redis/cache';
 
 /**
  * GET /api/youtube/shorts/trending
@@ -17,72 +18,88 @@ export async function GET(request: NextRequest) {
     const videoCategoryId = searchParams.get('videoCategoryId') || undefined;
     const pageToken = searchParams.get('pageToken') || undefined;
 
-    // YouTube 클라이언트 가져오기
-    const youtube = getYouTubeClient();
-
-    // 인기 쇼츠 조회
-    const result = await youtube.getTrendingShorts(
+    // 캐시 키 생성
+    const cacheKey = CacheKey.trendingShorts(
       regionCode,
-      50,
       videoCategoryId,
       pageToken
     );
 
-    const shorts = result.items;
+    // Redis 캐시를 통해 데이터 조회
+    const result = await withCache(
+      cacheKey,
+      async () => {
+        // YouTube 클라이언트 가져오기
+        const youtube = getYouTubeClient();
 
-    // 각 쇼츠에 대한 분석 정보 추가
-    const shortsWithAnalytics = shorts.map((short) => {
-      const analytics = calculateVideoAnalytics(short);
+        // 인기 쇼츠 조회
+        const result = await youtube.getTrendingShorts(
+          regionCode,
+          50,
+          videoCategoryId,
+          pageToken
+        );
 
-      return {
-        id: short.id,
-        title: short.snippet?.title,
-        description: short.snippet?.description,
-        thumbnailUrl:
-          short.snippet?.thumbnails?.high?.url ||
-          short.snippet?.thumbnails?.medium?.url ||
-          short.snippet?.thumbnails?.default?.url,
-        publishedAt: short.snippet?.publishedAt,
-        channelId: short.snippet?.channelId,
-        channelTitle: short.snippet?.channelTitle,
+        const shorts = result.items;
 
-        // 통계 정보
-        viewCount: parseInt(short.statistics?.viewCount || '0', 10),
-        likeCount: parseInt(short.statistics?.likeCount || '0', 10),
-        commentCount: parseInt(short.statistics?.commentCount || '0', 10),
+        // 각 쇼츠에 대한 분석 정보 추가
+        const shortsWithAnalytics = shorts.map((short) => {
+          const analytics = calculateVideoAnalytics(short);
 
-        // 동영상 정보
-        duration: short.contentDetails?.duration,
+          return {
+            id: short.id,
+            title: short.snippet?.title,
+            description: short.snippet?.description,
+            thumbnailUrl:
+              short.snippet?.thumbnails?.high?.url ||
+              short.snippet?.thumbnails?.medium?.url ||
+              short.snippet?.thumbnails?.default?.url,
+            publishedAt: short.snippet?.publishedAt,
+            channelId: short.snippet?.channelId,
+            channelTitle: short.snippet?.channelTitle,
 
-        // 분석 정보 (참여율)
-        engagementRate: analytics.engagementRate,
+            // 통계 정보
+            viewCount: parseInt(short.statistics?.viewCount || '0', 10),
+            likeCount: parseInt(short.statistics?.likeCount || '0', 10),
+            commentCount: parseInt(short.statistics?.commentCount || '0', 10),
 
-        // 채널 정보 (enrichWithChannelInfo로 추가된 정보)
-        channel: short.channelInfo
-          ? {
-              id: short.channelInfo.id,
-              title: short.channelInfo.snippet?.title,
-              thumbnailUrl:
-                short.channelInfo.snippet?.thumbnails?.default?.url,
-              subscriberCount: parseInt(
-                short.channelInfo.statistics?.subscriberCount || '0',
-                10
-              ),
-              videoCount: parseInt(
-                short.channelInfo.statistics?.videoCount || '0',
-                10
-              ),
-            }
-          : undefined,
-      };
-    });
+            // 동영상 정보
+            duration: short.contentDetails?.duration,
 
-    return NextResponse.json({
-      shorts: shortsWithAnalytics,
-      region: regionCode,
-      total: shortsWithAnalytics.length,
-      nextPageToken: result.nextPageToken,
-    });
+            // 분석 정보 (참여율)
+            engagementRate: analytics.engagementRate,
+
+            // 채널 정보 (enrichWithChannelInfo로 추가된 정보)
+            channel: short.channelInfo
+              ? {
+                  id: short.channelInfo.id,
+                  title: short.channelInfo.snippet?.title,
+                  thumbnailUrl:
+                    short.channelInfo.snippet?.thumbnails?.default?.url,
+                  subscriberCount: parseInt(
+                    short.channelInfo.statistics?.subscriberCount || '0',
+                    10
+                  ),
+                  videoCount: parseInt(
+                    short.channelInfo.statistics?.videoCount || '0',
+                    10
+                  ),
+                }
+              : undefined,
+          };
+        });
+
+        return {
+          shorts: shortsWithAnalytics,
+          region: regionCode,
+          total: shortsWithAnalytics.length,
+          nextPageToken: result.nextPageToken,
+        };
+      },
+      CacheTTL.TRENDING
+    );
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error in GET /api/youtube/shorts/trending:', error);
 

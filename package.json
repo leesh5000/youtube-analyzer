@@ -20,6 +20,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "googleapis": "^166.0.0",
+    "ioredis": "^5.8.2",
     "lucide-react": "^0.553.0",
     "next": "16.0.1",
     "next-auth": "^5.0.0-beta.30",

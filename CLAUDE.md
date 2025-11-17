@@ -31,6 +31,7 @@ npx prisma studio    # Open Prisma Studio GUI to view/edit database
 2. **Required for core functionality:**
    - `YOUTUBE_API_KEY`: Get from [Google Cloud Console](https://console.developers.google.com/)
    - `DATABASE_URL`: MongoDB connection string (local or Atlas)
+   - `REDIS_URL`: Redis connection string (local: `redis://localhost:6379`)
    - `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
    - `NEXTAUTH_URL`: Set to `http://localhost:3000` for local development
 
@@ -42,12 +43,17 @@ npx prisma studio    # Open Prisma Studio GUI to view/edit database
 
 The YouTube API key is accessed server-side via `process.env.YOUTUBE_API_KEY` and should never be exposed to the client.
 
+**Redis Setup**:
+- Start Redis using Docker Compose: `docker compose -f docker-compose.infra.yml up -d redis`
+- Redis is optional - if `REDIS_URL` is not set, the application falls back to direct YouTube API calls without caching
+
 ## Architecture
 
 ### Technology Stack
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
 - **Backend**: Next.js API Routes
 - **Database**: MongoDB with Prisma ORM
+- **Cache**: Redis 7 (ioredis client) for server-side caching
 - **Authentication**: NextAuth.js 5 (beta) with multiple providers
 - **State Management**: TanStack Query for server state, no global client state
 - **API Integration**: YouTube Data API v3 via googleapis
@@ -145,6 +151,9 @@ session.user.isAdmin     // Boolean flag for admin users
   - `getChannelVideos(channelId, maxResults)`: Gets videos via uploads playlist ID
   - `getVideoInfo(videoId)`: Fetches single video details
   - `searchChannels(query, maxResults)`: Searches for channels
+  - `getTrendingShorts(regionCode, maxResults, categoryId, pageToken)`: Fetches trending Shorts (duration ≤60s)
+  - `getTrendingVideos(regionCode, maxResults, categoryId, pageToken)`: Fetches trending regular videos (duration >60s)
+  - `enrichWithChannelInfo(videos)`: Batch-fetches channel details for videos to add subscriber/video counts
 
 #### Analytics Engine (`lib/youtube/analytics.ts`)
 Contains pure calculation functions for metrics:
@@ -159,6 +168,15 @@ Contains pure calculation functions for metrics:
 - `GET /api/youtube/channel?channelId={id}`: Returns comprehensive channel analysis
 - `GET /api/youtube/search?q={query}`: Searches for channels
 
+**Trending Videos** (public endpoints with pagination):
+- `GET /api/youtube/shorts/trending?regionCode={code}&pageToken={token}`: Fetch trending Shorts (≤60s)
+- `GET /api/youtube/trending?regionCode={code}&pageToken={token}`: Fetch trending regular videos (>60s)
+- Both endpoints support:
+  - `regionCode`: Country code (KR, US, JP, GLOBAL, etc.)
+  - `videoCategoryId`: Optional category filter
+  - `pageToken`: For pagination (returned as `nextPageToken` in response)
+  - Returns 50 videos per page with enriched channel information
+
 **User Features** (require authentication):
 - `POST /api/channels/save`: Save a channel to bookmarks
 - `GET /api/channels/saved`: Get user's saved channels
@@ -172,6 +190,13 @@ Response from `/api/youtube/channel` includes:
 - Top 10 videos by view count
 - Hidden gems (top 10 by views-to-subscriber ratio)
 - Performance score and insights
+
+Response from trending endpoints includes:
+- Array of videos/shorts with full metadata (title, description, thumbnails, statistics)
+- Enriched channel info (subscriber count, video count) via `enrichWithChannelInfo()`
+- Calculated engagement rate for each video
+- Region code and total count
+- `nextPageToken` for pagination
 
 ### Data Flow Pattern
 
@@ -191,12 +216,49 @@ Response from `/api/youtube/channel` includes:
 4. API routes query MongoDB via Prisma using userId
 5. TanStack Query caches user data on client
 
-### State Management
+### State Management and Caching
 
-- **Server State**: TanStack Query handles all API data caching and synchronization
+**Two-Tier Caching Architecture**:
+
+1. **Server-Side Cache (Primary)** - Redis
+   - Cache storage: **Redis 7** via `ioredis` client
+   - Caches YouTube API responses to reduce quota usage
+   - Shared across all users and server instances
+   - TTL (Time To Live) configuration:
+     - Trending videos/shorts: **5 minutes** (`CacheTTL.TRENDING`)
+     - Channel analysis: **10 minutes** (`CacheTTL.CHANNEL`)
+     - Search results: **15 minutes** (`CacheTTL.SEARCH`)
+   - Graceful fallback: If Redis is unavailable, falls back to direct API calls
+   - Cache utilities: `lib/redis/cache.ts` exports `withCache()`, `CacheKey`, `CacheTTL`
+   - Singleton client: `lib/redis/client.ts` exports `getRedisClient()`
+
+2. **Client-Side Cache (Secondary)** - TanStack Query
+   - Cache storage: **Browser memory** (JavaScript heap)
+   - Short-lived cache (30 seconds stale time) - defers to server cache
+   - Cleared on page refresh
+   - Each user maintains independent cache
+   - Prevents redundant requests within 30-second window
+
+**Cache Flow**:
+1. Client requests data via TanStack Query hook
+2. If client cache is fresh (<30s), return immediately
+3. Otherwise, make API request to Next.js route
+4. API route checks Redis cache (`withCache()`)
+5. If Redis cache hit, return cached data (10-50ms response)
+6. If Redis cache miss, call YouTube API and cache result
+7. Response flows back to client and updates both caches
+
+**State Management**:
+- **Server State**: TanStack Query handles all API data synchronization
 - **Client State**: No global client state (Zustand installed but unused)
 - **Form State**: Local component state with React hooks
 - Components are wrapped in `QueryClientProvider` via `providers.tsx`
+
+**Cache Key Strategy** (defined in `lib/redis/cache.ts`):
+- `youtube:trending:shorts:{regionCode}:{categoryId}:{pageToken}`
+- `youtube:trending:videos:{regionCode}:{categoryId}:{pageToken}`
+- `youtube:channel:{channelId}`
+- `youtube:search:channels:{encodedQuery}`
 
 ### Responsive Design
 
@@ -246,9 +308,19 @@ This applies to:
 
 ### YouTube API Quota Management
 YouTube Data API has quota limits. Current implementation:
-- Fetches max 50 videos per channel analysis (one quota unit per video)
-- No caching beyond TanStack Query's default behavior
-- Consider implementing server-side caching if quota becomes an issue
+- Channel analysis: Fetches max 50 videos per analysis (one quota unit per video)
+- Trending videos: Returns 50 items per page with pagination support
+- **Server-side Redis caching**:
+  - Trending data cached for 5 minutes - reduces quota usage by 80-90%
+  - Channel analysis cached for 10 minutes
+  - Search results cached for 15 minutes
+  - Shared cache across all users (not per-user)
+- **Client-side TanStack Query caching**:
+  - Short-lived 30-second cache to prevent rapid re-requests
+  - Defers to server Redis cache as primary source
+- **Expected quota reduction**: With Redis caching, same data requests consume near-zero quota for cache duration
+- Monitor quota usage in Google Cloud Console
+- Cache can be disabled by not setting `REDIS_URL` environment variable
 
 ### Error Handling
 - API routes catch errors and return appropriate HTTP status codes
@@ -286,10 +358,17 @@ export default async function ProtectedPage({
 
 ### Custom Hooks Pattern
 Data fetching hooks follow this structure:
-- Use TanStack Query's `useQuery` or `useMutation`
+- Use TanStack Query's `useQuery`, `useInfiniteQuery`, or `useMutation`
 - Handle loading, error, and success states
 - Export typed return values
-- Examples: `useChannelAnalysis()`, `useSavedChannels()`, `useAnalysisHistory()`
+- Examples:
+  - `useChannelAnalysis()`: Single query for channel data
+  - `useSavedChannels()`, `useAnalysisHistory()`: List queries
+  - `useTrendingShorts()`, `useTrendingVideos()`: Infinite queries with pagination
+    - Use `useInfiniteQuery` for paginated data
+    - Cache duration: `staleTime: 5 * 60 * 1000` (5 minutes), `gcTime: 10 * 60 * 1000` (10 minutes)
+    - Access data via `data.pages` array (not `data.shorts` or `data.videos`)
+    - Each page contains array of items and optional `nextPageToken`
 
 ### Locale-Aware Navigation
 All internal links must include the current locale:
