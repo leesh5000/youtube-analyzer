@@ -27,6 +27,12 @@ export function Header() {
                 {t("nav.analyze")}
               </Link>
               <Link
+                href={`/${locale}/shorts`}
+                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {t("nav.shorts")}
+              </Link>
+              <Link
                 href={`/${locale}/saved`}
                 className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
               >
@@ -85,6 +91,13 @@ export function Header() {
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 {t("nav.analyze")}
+              </Link>
+              <Link
+                href={`/${locale}/shorts`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                {t("nav.shorts")}
               </Link>
               <Link
                 href={`/${locale}/saved`}

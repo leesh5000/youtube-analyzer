@@ -1,4 +1,5 @@
 import { google, youtube_v3 } from 'googleapis';
+import { isShortVideo } from './utils';
 
 /**
  * YouTube Data API 클라이언트
@@ -109,6 +110,248 @@ export class YouTubeClient {
     } catch (error) {
       console.error('Error searching channels:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 인기 급상승 쇼츠 조회
+   * @param regionCode 국가 코드 (예: 'KR', 'US', 'JP') 또는 'GLOBAL'
+   * @param maxResults 최대 결과 수 (기본값: 50)
+   * @param videoCategoryId 선택적 카테고리 ID
+   * @param pageToken 페이지네이션 토큰
+   */
+  async getTrendingShorts(
+    regionCode: string = 'US',
+    maxResults: number = 50,
+    videoCategoryId?: string,
+    pageToken?: string
+  ) {
+    try {
+      // GLOBAL 옵션: 여러 국가의 데이터를 가져와서 합침
+      if (regionCode === 'GLOBAL') {
+        return await this.getGlobalTrendingShorts(maxResults, videoCategoryId, pageToken);
+      }
+
+      // 특정 국가의 인기 동영상 조회
+      const response = await this.youtube.videos.list({
+        part: ['snippet', 'statistics', 'contentDetails'],
+        chart: 'mostPopular',
+        regionCode,
+        maxResults: Math.min(maxResults, 50), // YouTube API limit
+        videoCategoryId: videoCategoryId ? [videoCategoryId] : undefined,
+        pageToken: pageToken,
+      });
+
+      const videos = response.data.items || [];
+      const nextPageToken = response.data.nextPageToken;
+
+      // 60초 이하 동영상만 필터링 (Shorts)
+      const shorts = videos.filter((video) => {
+        const duration = video.contentDetails?.duration;
+        return duration && isShortVideo(duration);
+      });
+
+      // 채널 정보 함께 조회
+      const enrichedShorts = await this.enrichWithChannelInfo(shorts);
+
+      return {
+        items: enrichedShorts,
+        nextPageToken,
+      };
+    } catch (error) {
+      console.error('Error fetching trending shorts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 인기 급상승 일반 동영상 조회 (60초 초과)
+   * @param regionCode 국가 코드 (예: 'KR', 'US', 'JP') 또는 'GLOBAL'
+   * @param maxResults 최대 결과 수 (기본값: 50)
+   * @param videoCategoryId 선택적 카테고리 ID
+   * @param pageToken 페이지네이션 토큰
+   */
+  async getTrendingVideos(
+    regionCode: string = 'US',
+    maxResults: number = 50,
+    videoCategoryId?: string,
+    pageToken?: string
+  ) {
+    try {
+      // GLOBAL 옵션: 여러 국가의 데이터를 가져와서 합침
+      if (regionCode === 'GLOBAL') {
+        return await this.getGlobalTrendingVideos(maxResults, videoCategoryId, pageToken);
+      }
+
+      // 특정 국가의 인기 동영상 조회
+      const response = await this.youtube.videos.list({
+        part: ['snippet', 'statistics', 'contentDetails'],
+        chart: 'mostPopular',
+        regionCode,
+        maxResults: Math.min(maxResults, 50), // YouTube API limit
+        videoCategoryId: videoCategoryId ? [videoCategoryId] : undefined,
+        pageToken: pageToken,
+      });
+
+      const videos = response.data.items || [];
+      const nextPageToken = response.data.nextPageToken;
+
+      // 60초 초과 동영상만 필터링 (일반 동영상)
+      const regularVideos = videos.filter((video) => {
+        const duration = video.contentDetails?.duration;
+        return duration && !isShortVideo(duration);
+      });
+
+      // 채널 정보 함께 조회
+      const enrichedVideos = await this.enrichWithChannelInfo(regularVideos);
+
+      return {
+        items: enrichedVideos,
+        nextPageToken,
+      };
+    } catch (error) {
+      console.error('Error fetching trending videos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 글로벌 인기 쇼츠 조회 (여러 국가 데이터 합침)
+   * @private
+   */
+  private async getGlobalTrendingShorts(
+    maxResults: number = 50,
+    videoCategoryId?: string,
+    pageToken?: string
+  ) {
+    try {
+      // 주요 3개 국가에서 데이터 가져오기 (API 쿼터 관리)
+      const regions = ['US', 'KR', 'JP'];
+      const perRegionLimit = Math.ceil(maxResults / regions.length);
+
+      // 병렬로 각 국가의 쇼츠 가져오기
+      const allShortsPromises = regions.map((region) =>
+        this.getTrendingShorts(region, perRegionLimit, videoCategoryId, pageToken)
+      );
+
+      const allShortsArrays = await Promise.all(allShortsPromises);
+      const allShorts = allShortsArrays.flatMap(result => result.items);
+
+      // 중복 제거 (videoId 기준)
+      const uniqueShorts = Array.from(
+        new Map(allShorts.map((short) => [short.id, short])).values()
+      );
+
+      // 조회수 순으로 정렬
+      const sortedShorts = uniqueShorts.sort((a, b) => {
+        const viewsA = parseInt(a.statistics?.viewCount || '0', 10);
+        const viewsB = parseInt(b.statistics?.viewCount || '0', 10);
+        return viewsB - viewsA;
+      });
+
+      // 최대 결과 수 제한
+      return {
+        items: sortedShorts.slice(0, maxResults),
+        nextPageToken: allShortsArrays[0]?.nextPageToken, // Use first region's token
+      };
+    } catch (error) {
+      console.error('Error fetching global trending shorts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 글로벌 인기 일반 동영상 조회 (여러 국가 데이터 합침)
+   * @private
+   */
+  private async getGlobalTrendingVideos(
+    maxResults: number = 50,
+    videoCategoryId?: string,
+    pageToken?: string
+  ) {
+    try {
+      // 주요 3개 국가에서 데이터 가져오기 (API 쿼터 관리)
+      const regions = ['US', 'KR', 'JP'];
+      const perRegionLimit = Math.ceil(maxResults / regions.length);
+
+      // 병렬로 각 국가의 일반 동영상 가져오기
+      const allVideosPromises = regions.map((region) =>
+        this.getTrendingVideos(region, perRegionLimit, videoCategoryId, pageToken)
+      );
+
+      const allVideosArrays = await Promise.all(allVideosPromises);
+      const allVideos = allVideosArrays.flatMap(result => result.items);
+
+      // 중복 제거 (videoId 기준)
+      const uniqueVideos = Array.from(
+        new Map(allVideos.map((video) => [video.id, video])).values()
+      );
+
+      // 조회수 순으로 정렬
+      const sortedVideos = uniqueVideos.sort((a, b) => {
+        const viewsA = parseInt(a.statistics?.viewCount || '0', 10);
+        const viewsB = parseInt(b.statistics?.viewCount || '0', 10);
+        return viewsB - viewsA;
+      });
+
+      // 최대 결과 수 제한
+      return {
+        items: sortedVideos.slice(0, maxResults),
+        nextPageToken: allVideosArrays[0]?.nextPageToken, // Use first region's token
+      };
+    } catch (error) {
+      console.error('Error fetching global trending videos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 비디오에 채널 정보 추가
+   * @private
+   */
+  private async enrichWithChannelInfo(videos: youtube_v3.Schema$Video[]) {
+    try {
+      // 채널 ID 추출
+      const channelIds = [
+        ...new Set(
+          videos
+            .map((video) => video.snippet?.channelId)
+            .filter(Boolean) as string[]
+        ),
+      ];
+
+      if (channelIds.length === 0) {
+        return videos;
+      }
+
+      // 채널 정보 조회 (최대 50개씩)
+      const channelInfoMap = new Map();
+
+      for (let i = 0; i < channelIds.length; i += 50) {
+        const batch = channelIds.slice(i, i + 50);
+        const channelsResponse = await this.youtube.channels.list({
+          part: ['snippet', 'statistics'],
+          id: batch,
+        });
+
+        channelsResponse.data.items?.forEach((channel) => {
+          if (channel.id) {
+            channelInfoMap.set(channel.id, channel);
+          }
+        });
+      }
+
+      // 비디오에 채널 정보 추가
+      return videos.map((video) => ({
+        ...video,
+        channelInfo: video.snippet?.channelId
+          ? channelInfoMap.get(video.snippet.channelId)
+          : undefined,
+      }));
+    } catch (error) {
+      console.error('Error enriching with channel info:', error);
+      // 채널 정보 조회 실패해도 비디오는 반환
+      return videos;
     }
   }
 }

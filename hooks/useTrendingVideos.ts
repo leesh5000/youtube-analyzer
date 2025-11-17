@@ -1,0 +1,54 @@
+import { useInfiniteQuery } from '@tanstack/react-query';
+import axios from 'axios';
+
+export interface VideoData {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  publishedAt: string;
+  channelId: string;
+  channelTitle: string;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  duration: string;
+  engagementRate: number;
+  channel?: {
+    id: string;
+    title: string;
+    thumbnailUrl: string;
+    subscriberCount: number;
+    videoCount: number;
+  };
+}
+
+export interface TrendingVideosData {
+  videos: VideoData[];
+  region: string;
+  total: number;
+  nextPageToken?: string;
+}
+
+export function useTrendingVideos(
+  regionCode: string = 'US',
+  videoCategoryId?: string
+) {
+  return useInfiniteQuery<TrendingVideosData>({
+    queryKey: ['trendingVideos', regionCode, videoCategoryId],
+    queryFn: async ({ pageParam }) => {
+      const response = await axios.get('/api/youtube/trending', {
+        params: {
+          regionCode,
+          videoCategoryId,
+          pageToken: pageParam,
+        },
+      });
+      return response.data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+    staleTime: 5 * 60 * 1000, // 5분 동안 캐시 유지
+    gcTime: 10 * 60 * 1000, // 10분 후 가비지 컬렉션
+  });
+}
