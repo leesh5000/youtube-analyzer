@@ -3,6 +3,7 @@
 import { useSaveChannel, useDeleteSavedChannel, useSavedChannels } from "@/hooks/useSavedChannels"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { useTranslations, useLocale } from "next-intl"
 
 interface SaveChannelButtonProps {
   channelId: string
@@ -19,6 +20,8 @@ export function SaveChannelButton({
   subscriberCount,
   metadata,
 }: SaveChannelButtonProps) {
+  const t = useTranslations()
+  const locale = useLocale()
   const { data: session } = useSession()
   const router = useRouter()
   const { data: savedChannels } = useSavedChannels()
@@ -30,7 +33,7 @@ export function SaveChannelButton({
 
   const handleClick = async () => {
     if (!session?.user) {
-      router.push("/auth/signin")
+      router.push(`/${locale}/auth/signin`)
       return
     }
 
@@ -75,14 +78,14 @@ export function SaveChannelButton({
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span className="hidden sm:inline">Processing...</span>
+          <span className="hidden sm:inline">{t('saved.processing')}</span>
         </>
       ) : isSaved ? (
         <>
           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
-          Saved
+          {t('saved.saved')}
         </>
       ) : (
         <>
@@ -94,8 +97,8 @@ export function SaveChannelButton({
               d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
             />
           </svg>
-          <span className="hidden sm:inline">Save Channel</span>
-          <span className="sm:hidden">Save</span>
+          <span className="hidden sm:inline">{t('saved.saveChannel')}</span>
+          <span className="sm:hidden">{t('saved.save')}</span>
         </>
       )}
     </button>

@@ -51,6 +51,7 @@ The YouTube API key is accessed server-side via `process.env.YOUTUBE_API_KEY` an
 - **Authentication**: NextAuth.js 5 (beta) with multiple providers
 - **State Management**: TanStack Query for server state, no global client state
 - **API Integration**: YouTube Data API v3 via googleapis
+- **Internationalization**: next-intl with locale routing (/ko, /en)
 - **UI Components**: Lucide React icons, custom responsive components
 
 ### Three-Tier Architecture
@@ -82,6 +83,38 @@ session.user.id          // MongoDB ObjectId
 session.user.isAdmin     // Boolean flag for admin users
 ```
 
+### Internationalization (i18n)
+
+**next-intl Configuration**:
+- **Supported Locales**: Korean (ko) and English (en)
+- **Default Locale**: Korean (ko)
+- **Routing**: Path-based with locale prefix (/ko, /en)
+- **Translation Files**: `messages/ko.json` and `messages/en.json`
+
+**Important i18n Patterns**:
+- All routes are under `app/[locale]/` directory
+- Middleware handles automatic locale detection and redirection
+- Server components use `getTranslations()` from next-intl/server
+- Client components use `useTranslations()` hook
+- Locale-aware number/date formatting uses `Intl` APIs and date-fns
+- Next.js 16 requires params to be awaited: `const { locale } = await params`
+- **ALL user-facing text must be translated** - never hardcode English/Korean text in components
+- Use translation keys from `messages/` files for all UI text including buttons, labels, page titles, and error messages
+
+**i18n Configuration Files**:
+- `i18n.ts`: Core configuration with locale list and message loading
+- `middleware.ts`: Handles locale routing and redirection
+- `types/i18n.d.ts`: TypeScript autocomplete for translation keys
+- `next.config.ts`: Integrates next-intl plugin
+
+**Translation File Structure**:
+- `common`: Shared UI elements (buttons, actions)
+- `nav`: Navigation menu items
+- `home`, `saved`, `history`: Page-specific translations with `pageTitle` and `pageDescription`
+- `auth`: Authentication-related text
+- `videos`, `analytics`, `channel`: Feature-specific translations
+- `meta`: SEO metadata (titles, descriptions)
+
 ### Database Schema (Prisma + MongoDB)
 
 **Core Models**:
@@ -98,7 +131,7 @@ session.user.isAdmin     // Boolean flag for admin users
 - `metadata` fields store JSON data for flexible storage
 
 **Generated Prisma Client**:
-- Located in `lib/generated/prisma/` (custom output)
+- Located in `node_modules/.prisma/client/` (default output)
 - Import via `@/lib/db` which exports singleton `prisma` instance
 - Regenerate with `npx prisma generate` after schema changes
 
@@ -186,9 +219,30 @@ TypeScript is configured with strict mode. Key patterns:
 - YouTube API types from `googleapis` are re-exported in `types/index.ts`
 - API response types are defined inline in hooks (see `useChannelAnalysis.ts`)
 - Channel/video data transformation happens in API routes, not client-side
-- Prisma generates types automatically in `lib/generated/prisma/`
+- Prisma generates types automatically in `node_modules/.prisma/client/`
 
 ## Important Patterns
+
+### Next.js 16 Breaking Changes
+Next.js 16 changed `params` in pages and layouts to be Promises:
+
+```typescript
+// Correct pattern for Next.js 16
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params  // Must await
+  // ...
+}
+```
+
+This applies to:
+- Page components in `app/[locale]/`
+- Layout components
+- `generateMetadata()` functions
+- `generateStaticParams()` functions
 
 ### YouTube API Quota Management
 YouTube Data API has quota limits. Current implementation:
@@ -200,7 +254,7 @@ YouTube Data API has quota limits. Current implementation:
 - API routes catch errors and return appropriate HTTP status codes
 - Client-side components should handle query states: `isLoading`, `isError`, `error`
 - YouTube client logs errors to console before throwing
-- Protected routes redirect to `/auth/signin` if not authenticated
+- Protected routes redirect to `/[locale]/auth/signin` if not authenticated
 
 ### Video Retrieval Pattern
 To get channel videos, the YouTube API requires a two-step process (see `getChannelVideos()` in `lib/youtube/client.ts`):
@@ -216,10 +270,15 @@ Pages requiring authentication use this pattern:
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
-export default async function ProtectedPage() {
+export default async function ProtectedPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const session = await auth()
   if (!session?.user) {
-    redirect("/auth/signin")
+    redirect(`/${locale}/auth/signin`)
   }
   // ... protected content
 }
@@ -231,6 +290,40 @@ Data fetching hooks follow this structure:
 - Handle loading, error, and success states
 - Export typed return values
 - Examples: `useChannelAnalysis()`, `useSavedChannels()`, `useAnalysisHistory()`
+
+### Locale-Aware Navigation
+All internal links must include the current locale:
+```typescript
+import { useLocale } from "next-intl"
+import Link from "next/link"
+
+const locale = useLocale()
+<Link href={`/${locale}/saved`}>Saved Channels</Link>
+```
+
+OAuth callback URLs and redirects should also preserve locale:
+```typescript
+// Client components
+signIn("google", { callbackUrl: `/${locale}` })
+
+// Server components
+redirect(`/${locale}/auth/signin`)
+```
+
+**Date and Number Formatting**:
+All dates and numbers should be formatted according to the current locale:
+```typescript
+// Date formatting
+const dateLocale = locale === 'ko' ? ko : enUS
+const dateFormat = t('videos.dateFormat')  // Get format from translations
+format(new Date(dateString), dateFormat, { locale: dateLocale })
+
+// Number formatting
+new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(number)
+
+// Date display in lists
+new Date(item.createdAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')
+```
 
 ## Testing Notes
 

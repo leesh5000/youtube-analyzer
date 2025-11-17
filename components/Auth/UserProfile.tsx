@@ -1,10 +1,13 @@
 "use client"
 
 import { useSession } from "next-auth/react"
+import { useTranslations, useLocale } from "next-intl"
 import { SignOutButton } from "./SignOutButton"
 import Link from "next/link"
 
 export function UserProfile() {
+  const t = useTranslations()
+  const locale = useLocale()
   const { data: session, status } = useSession()
 
   if (status === "loading") {
@@ -18,10 +21,10 @@ export function UserProfile() {
   if (!session?.user) {
     return (
       <Link
-        href="/auth/signin"
+        href={`/${locale}/auth/signin`}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
       >
-        Sign In
+        {t("common.signIn")}
       </Link>
     )
   }
@@ -70,16 +73,16 @@ export function UserProfile() {
         </div>
         <div className="py-2">
           <Link
-            href="/saved"
+            href={`/${locale}/saved`}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           >
-            Saved Channels
+            {t("nav.savedChannels")}
           </Link>
           <Link
-            href="/history"
+            href={`/${locale}/history`}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
           >
-            History
+            {t("nav.history")}
           </Link>
         </div>
         <div className="p-2 border-t border-gray-200">

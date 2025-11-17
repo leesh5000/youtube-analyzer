@@ -3,8 +3,11 @@
 import { useSavedChannels, useDeleteSavedChannel, useUpdateSavedChannel } from "@/hooks/useSavedChannels"
 import Link from "next/link"
 import { useState } from "react"
+import { useTranslations, useLocale } from "next-intl"
 
 export function SavedChannelsList() {
+  const t = useTranslations()
+  const locale = useLocale()
   const { data: savedChannels, isLoading, error } = useSavedChannels()
   const deleteSavedChannel = useDeleteSavedChannel()
   const updateSavedChannel = useUpdateSavedChannel()
@@ -23,7 +26,7 @@ export function SavedChannelsList() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Failed to load saved channels</p>
+        <p className="text-red-600">{t('saved.error')}</p>
       </div>
     )
   }
@@ -44,14 +47,14 @@ export function SavedChannelsList() {
             d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
           />
         </svg>
-        <h3 className="mt-2 text-sm font-medium text-gray-900">No saved channels</h3>
-        <p className="mt-1 text-sm text-gray-500">Start analyzing channels and save your favorites!</p>
+        <h3 className="mt-2 text-sm font-medium text-gray-900">{t('saved.noChannels')}</h3>
+        <p className="mt-1 text-sm text-gray-500">{t('saved.noChannelsDescription')}</p>
         <div className="mt-6">
           <Link
-            href="/"
+            href={`/${locale}`}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
           >
-            Analyze Channels
+            {t('saved.analyzeChannels')}
           </Link>
         </div>
       </div>
@@ -93,7 +96,7 @@ export function SavedChannelsList() {
                   {channel.channelName}
                 </h3>
                 {channel.subscriberCount && (
-                  <p className="text-xs sm:text-sm text-gray-500">{channel.subscriberCount} subscribers</p>
+                  <p className="text-xs sm:text-sm text-gray-500">{channel.subscriberCount} {t('saved.subscribers')}</p>
                 )}
               </div>
             </div>
@@ -101,7 +104,7 @@ export function SavedChannelsList() {
             {editingId === channel.id ? (
               <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('saved.notes')}</label>
                   <textarea
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
@@ -111,14 +114,14 @@ export function SavedChannelsList() {
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Tags (comma separated)
+                    {t('saved.tags')}
                   </label>
                   <input
                     type="text"
                     value={editTags}
                     onChange={(e) => setEditTags(e.target.value)}
                     className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="tag1, tag2, tag3"
+                    placeholder={t('saved.tagsPlaceholder')}
                   />
                 </div>
                 <div className="flex gap-2">
@@ -126,13 +129,13 @@ export function SavedChannelsList() {
                     onClick={() => handleSaveEdit(channel.id)}
                     className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm"
                   >
-                    Save
+                    {t('common.save')}
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
                     className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-xs sm:text-sm"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -156,28 +159,28 @@ export function SavedChannelsList() {
                 )}
 
                 <p className="mt-2 sm:mt-3 text-xs text-gray-400">
-                  Saved {new Date(channel.createdAt).toLocaleDateString()}
+                  {t('saved.saved')} {new Date(channel.createdAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                 </p>
 
                 <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row gap-2">
                   <Link
-                    href={`/?channelId=${channel.channelId}`}
+                    href={`/${locale}?channelId=${channel.channelId}`}
                     className="flex-1 text-center px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm"
                   >
-                    View Analysis
+                    {t('saved.viewAnalysis')}
                   </Link>
                   <button
                     onClick={() => handleEdit(channel)}
                     className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs sm:text-sm"
                   >
-                    Edit
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={() => deleteSavedChannel.mutate(channel.id)}
                     disabled={deleteSavedChannel.isPending}
                     className="px-2 sm:px-3 py-1.5 sm:py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-xs sm:text-sm disabled:opacity-50"
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </>

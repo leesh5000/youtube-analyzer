@@ -1,6 +1,7 @@
 'use client';
 
-import {Award, BarChart3, Heart, TrendingUp} from 'lucide-react';
+import { Award, BarChart3, Heart, TrendingUp } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface AnalyticsDashboardProps {
   analytics: {
@@ -18,8 +19,11 @@ export function AnalyticsDashboard({
   analytics,
   performance,
 }: AnalyticsDashboardProps) {
+  const t = useTranslations();
+  const locale = useLocale();
+
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('ko-KR', {
+    return new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
       maximumFractionDigits: 2,
     }).format(num);
   };
@@ -31,32 +35,32 @@ export function AnalyticsDashboard({
   };
 
   const getScoreGrade = (score: number) => {
-    if (score >= 90) return 'S';
-    if (score >= 80) return 'A';
-    if (score >= 70) return 'B';
-    if (score >= 60) return 'C';
-    return 'D';
+    if (score >= 90) return t('analytics.gradeS');
+    if (score >= 80) return t('analytics.gradeA');
+    if (score >= 70) return t('analytics.gradeB');
+    if (score >= 60) return t('analytics.gradeC');
+    return t('analytics.gradeD');
   };
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 핵심 지표 */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">핵심 분석 지표</h3>
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">{t('analytics.title')}</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
             <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 flex-shrink-0" />
               <h4 className="font-semibold text-sm sm:text-base text-gray-900">
-                구독자당 조회수
+                {t('analytics.viewsPerSubscriber')}
               </h4>
             </div>
             <p className="text-xl sm:text-2xl font-bold text-purple-600">
               {formatNumber(analytics.viewsPerSubscriber)}
             </p>
             <p className="text-xs text-gray-600 mt-1">
-              총 조회수 / 구독자 수
+              {t('analytics.viewsPerSubscriberDesc')}
             </p>
           </div>
 
@@ -64,14 +68,14 @@ export function AnalyticsDashboard({
             <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
               <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 flex-shrink-0" />
               <h4 className="font-semibold text-sm sm:text-base text-gray-900">
-                평균 조회수
+                {t('analytics.avgViews')}
               </h4>
             </div>
             <p className="text-xl sm:text-2xl font-bold text-orange-600">
               {formatNumber(analytics.avgViewsPerVideo)}
             </p>
             <p className="text-xs text-gray-600 mt-1">
-              비디오당 평균 조회수
+              {t('analytics.avgViewsDesc')}
             </p>
           </div>
 
@@ -79,14 +83,14 @@ export function AnalyticsDashboard({
             <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
               <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600 flex-shrink-0" />
               <h4 className="font-semibold text-sm sm:text-base text-gray-900">
-                참여율
+                {t('analytics.engagementRate')}
               </h4>
             </div>
             <p className="text-xl sm:text-2xl font-bold text-pink-600">
               {formatNumber(analytics.engagementRate)}%
             </p>
             <p className="text-xs text-gray-600 mt-1">
-              (좋아요 + 댓글) / 조회수
+              {t('analytics.engagementRateDesc')}
             </p>
           </div>
         </div>
@@ -95,7 +99,7 @@ export function AnalyticsDashboard({
       {/* 성과 평가 */}
       <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
         <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900">채널 성과 평가</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900">{t('analytics.performanceTitle')}</h3>
           <div
             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-bold text-xl sm:text-2xl ${getScoreColor(
               performance.score
@@ -107,7 +111,7 @@ export function AnalyticsDashboard({
 
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">종합 점수</span>
+            <span className="text-sm text-gray-600">{t('analytics.overallScore')}</span>
             <span className="font-semibold text-gray-900">
               {performance.score} / 100
             </span>
@@ -131,7 +135,7 @@ export function AnalyticsDashboard({
             <Award className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-gray-900 mb-2">
-                분석 인사이트
+                {t('analytics.insightsTitle')}
               </h4>
               <ul className="space-y-2">
                 {performance.insights.map((insight, index) => (

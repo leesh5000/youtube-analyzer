@@ -1,8 +1,9 @@
 'use client';
 
 import { Users, Eye, Video, Calendar } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { ko, enUS } from 'date-fns/locale';
 
 interface ChannelInfoProps {
   channel: {
@@ -25,12 +26,17 @@ interface ChannelInfoProps {
 }
 
 export function ChannelInfo({ channel }: ChannelInfoProps) {
+  const t = useTranslations();
+  const locale = useLocale();
+
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('ko-KR').format(num);
+    return new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(num);
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'yyyy년 MM월 dd일', { locale: ko });
+    const dateLocale = locale === 'ko' ? ko : enUS;
+    const dateFormat = t('channel.createdDateFormat');
+    return format(new Date(dateString), dateFormat, { locale: dateLocale });
   };
 
   return (
@@ -66,7 +72,7 @@ export function ChannelInfo({ channel }: ChannelInfoProps) {
 
           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 justify-center md:justify-start">
             <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span>개설일: {formatDate(channel.publishedAt)}</span>
+            <span>{t('channel.createdDate')}: {formatDate(channel.publishedAt)}</span>
           </div>
         </div>
       </div>
@@ -77,7 +83,7 @@ export function ChannelInfo({ channel }: ChannelInfoProps) {
             <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-gray-600">구독자</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('channel.subscribers')}</p>
             <p className="text-base sm:text-xl font-bold text-gray-900 truncate">
               {formatNumber(channel.statistics.subscriberCount)}
             </p>
@@ -89,7 +95,7 @@ export function ChannelInfo({ channel }: ChannelInfoProps) {
             <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-gray-600">총 조회수</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('channel.totalViews')}</p>
             <p className="text-base sm:text-xl font-bold text-gray-900 truncate">
               {formatNumber(channel.statistics.viewCount)}
             </p>
@@ -101,7 +107,7 @@ export function ChannelInfo({ channel }: ChannelInfoProps) {
             <Video className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs sm:text-sm text-gray-600">영상 수</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('channel.videos')}</p>
             <p className="text-base sm:text-xl font-bold text-gray-900 truncate">
               {formatNumber(channel.statistics.videoCount)}
             </p>

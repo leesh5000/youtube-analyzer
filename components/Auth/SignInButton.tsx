@@ -1,9 +1,12 @@
 "use client"
 
 import { signIn } from "next-auth/react"
+import { useTranslations, useLocale } from "next-intl"
 import { useState } from "react"
 
 export function SignInButton() {
+  const t = useTranslations()
+  const locale = useLocale()
   const [isAdminMode, setIsAdminMode] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -19,15 +22,15 @@ export function SignInButton() {
       const result = await signIn("admin", {
         email,
         password,
-        callbackUrl: "/",
+        callbackUrl: `/${locale}`,
         redirect: true,
       })
 
       if (result?.error) {
-        setError("Invalid email or password")
+        setError(t("auth.invalidCredentials"))
       }
     } catch (err) {
-      setError("An error occurred during login")
+      setError(t("auth.loginError"))
     } finally {
       setIsLoading(false)
     }
@@ -45,7 +48,7 @@ export function SignInButton() {
               : "text-gray-600 hover:text-gray-900"
           }`}
         >
-          Social Login
+          {t("auth.socialLogin")}
         </button>
         <button
           onClick={() => setIsAdminMode(true)}
@@ -55,7 +58,7 @@ export function SignInButton() {
               : "text-gray-600 hover:text-gray-900"
           }`}
         >
-          Admin
+          {t("auth.adminLogin")}
         </button>
       </div>
 
@@ -64,7 +67,7 @@ export function SignInButton() {
         <form onSubmit={handleAdminLogin} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              {t("auth.emailLabel")}
             </label>
             <input
               id="email"
@@ -73,13 +76,13 @@ export function SignInButton() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="admin@example.com"
+              placeholder={t("auth.emailPlaceholder")}
             />
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
+              {t("auth.passwordLabel")}
             </label>
             <input
               id="password"
@@ -88,7 +91,7 @@ export function SignInButton() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="••••••••"
+              placeholder={t("auth.passwordPlaceholder")}
             />
           </div>
 
@@ -103,14 +106,14 @@ export function SignInButton() {
             disabled={isLoading}
             className="w-full py-2.5 sm:py-3 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Signing in..." : "Sign in as Admin"}
+            {isLoading ? t("auth.signingIn") : t("auth.signInButton")}
           </button>
         </form>
       ) : (
         /* Social login buttons */
         <div className="flex flex-col gap-3">
           <button
-            onClick={() => signIn("google", { callbackUrl: "/" })}
+            onClick={() => signIn("google", { callbackUrl: `/${locale}` })}
             className="flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
@@ -131,27 +134,7 @@ export function SignInButton() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <span className="truncate">Continue with Google</span>
-          </button>
-
-          <button
-            onClick={() => signIn("kakao", { callbackUrl: "/" })}
-            className="flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-[#FEE500] text-[#000000] rounded-lg hover:bg-[#FDD835] transition-colors font-medium"
-          >
-            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.7 1.68 5.1 4.32 6.6l-1.08 4.02c-.12.36.24.66.6.48l4.68-3.12c.48.06.96.12 1.48.12 5.52 0 10-3.48 10-7.8S17.52 3 12 3z" />
-            </svg>
-            <span className="truncate">Continue with Kakao</span>
-          </button>
-
-          <button
-            onClick={() => signIn("naver", { callbackUrl: "/" })}
-            className="flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-[#03C75A] text-white rounded-lg hover:bg-[#02B350] transition-colors font-medium"
-          >
-            <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16.273 12.845L7.376 0H0v24h7.726V11.156L16.624 24H24V0h-7.727v12.845z" />
-            </svg>
-            <span className="truncate">Continue with Naver</span>
+            <span className="truncate">{t("auth.continueWithGoogle")}</span>
           </button>
         </div>
       )}

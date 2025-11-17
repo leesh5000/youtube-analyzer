@@ -2,7 +2,8 @@
 
 import { Eye, ThumbsUp, MessageCircle, TrendingUp, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { ko, enUS } from 'date-fns/locale';
+import { useTranslations, useLocale } from 'next-intl';
 
 interface TopVideo {
   id: string;
@@ -29,12 +30,17 @@ interface VideoListProps {
 }
 
 export function VideoList({ topVideos, hiddenGems, type }: VideoListProps) {
+  const t = useTranslations();
+  const locale = useLocale();
+
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('ko-KR').format(num);
+    return new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(num);
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'yyyy.MM.dd', { locale: ko });
+    const dateLocale = locale === 'ko' ? ko : enUS;
+    const dateFormat = t('videos.dateFormat');
+    return format(new Date(dateString), dateFormat, { locale: dateLocale });
   };
 
   if (type === 'top' && topVideos) {
@@ -43,7 +49,7 @@ export function VideoList({ topVideos, hiddenGems, type }: VideoListProps) {
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 flex-shrink-0" />
           <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-            인기 영상 Top 10
+            {t('videos.topVideos')}
           </h3>
         </div>
 
@@ -82,7 +88,7 @@ export function VideoList({ topVideos, hiddenGems, type }: VideoListProps) {
                       <span className="truncate">{formatNumber(video.commentCount)}</span>
                     </div>
                     <div className="text-purple-600 font-semibold whitespace-nowrap">
-                      참여율: {video.engagementRate.toFixed(2)}%
+                      {t('videos.engagement')}: {video.engagementRate.toFixed(2)}%
                     </div>
                   </div>
 
@@ -104,17 +110,17 @@ export function VideoList({ topVideos, hiddenGems, type }: VideoListProps) {
         <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 flex-shrink-0" />
           <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-            히든 영상 발굴
+            {t('videos.hiddenGems')}
           </h3>
         </div>
 
         <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-          구독자 대비 조회수가 높은 영상들입니다
+          {t('videos.hiddenGemsDesc')}
         </p>
 
         {hiddenGems.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500">
-            히든 영상이 없습니다.
+            {t('videos.noHiddenGems')}
           </div>
         ) : (
           <div className="space-y-2 sm:space-y-3">
@@ -144,7 +150,7 @@ export function VideoList({ topVideos, hiddenGems, type }: VideoListProps) {
                         <span className="truncate">{formatNumber(video.viewCount)}</span>
                       </div>
                       <div className="text-yellow-600 font-semibold whitespace-nowrap">
-                        구독자 대비: {video.viewsToSubscriberRatio.toFixed(2)}배
+                        {t('videos.subscriberRatio')}: {video.viewsToSubscriberRatio.toFixed(2)}x
                       </div>
                     </div>
 

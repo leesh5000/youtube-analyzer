@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useChannelSearch } from '@/hooks/useChannelSearch';
 import { Search, Loader2 } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface ChannelSearchProps {
 }
 
 export function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
+  const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -27,7 +29,7 @@ export function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="채널 이름을 검색하세요..."
+            placeholder={t('search.inputPlaceholder')}
             className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 pr-3 sm:pr-4 text-sm sm:text-base text-gray-900 placeholder-gray-500 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
@@ -36,7 +38,7 @@ export function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
           type="submit"
           className="mt-3 w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
-          검색
+          {t('search.button')}
         </button>
       </form>
 
@@ -76,7 +78,7 @@ export function ChannelSearch({ onChannelSelect }: ChannelSearchProps) {
 
       {data && data.channels.length === 0 && debouncedQuery && (
         <div className="mt-8 text-center text-gray-500">
-          검색 결과가 없습니다.
+          {t('search.noResults')}
         </div>
       )}
     </div>

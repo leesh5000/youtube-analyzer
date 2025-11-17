@@ -1,21 +1,28 @@
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { HistoryList } from "@/components/History/HistoryList"
+import { getTranslations } from "next-intl/server"
 
-export default async function HistoryPage() {
+export default async function HistoryPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const session = await auth()
+  const t = await getTranslations()
 
   if (!session?.user) {
-    redirect("/auth/signin")
+    redirect(`/${locale}/auth/signin`)
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Analysis History</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('history.pageTitle')}</h1>
           <p className="mt-2 text-xs sm:text-sm text-gray-600">
-            Your channel analyses and search history
+            {t('history.pageDescription')}
           </p>
         </div>
 

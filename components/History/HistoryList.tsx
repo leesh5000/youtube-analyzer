@@ -3,8 +3,11 @@
 import { useAnalysisHistory } from "@/hooks/useAnalysisHistory"
 import Link from "next/link"
 import { useState } from "react"
+import { useTranslations, useLocale } from "next-intl"
 
 export function HistoryList() {
+  const t = useTranslations()
+  const locale = useLocale()
   const [filter, setFilter] = useState<"all" | "channel" | "search">("all")
   const { data, isLoading, error } = useAnalysisHistory({
     type: filter === "all" ? undefined : filter,
@@ -21,7 +24,7 @@ export function HistoryList() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Failed to load analysis history</p>
+        <p className="text-red-600">{t('history.error')}</p>
       </div>
     )
   }
@@ -41,7 +44,7 @@ export function HistoryList() {
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             } whitespace-nowrap py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
           >
-            All
+            {t('history.all')}
           </button>
           <button
             onClick={() => setFilter("channel")}
@@ -51,7 +54,7 @@ export function HistoryList() {
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             } whitespace-nowrap py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
           >
-            Channel Analyses
+            {t('history.channelAnalyses')}
           </button>
           <button
             onClick={() => setFilter("search")}
@@ -61,7 +64,7 @@ export function HistoryList() {
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             } whitespace-nowrap py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
           >
-            Searches
+            {t('history.searches')}
           </button>
         </nav>
       </div>
@@ -81,16 +84,16 @@ export function HistoryList() {
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No history</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">{t('history.noHistory')}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Your analysis history will appear here
+            {t('history.noHistoryDescription')}
           </p>
           <div className="mt-6">
             <Link
-              href="/"
+              href={`/${locale}`}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
             >
-              Start Analyzing
+              {t('history.startAnalyzing')}
             </Link>
           </div>
         </div>
@@ -111,24 +114,24 @@ export function HistoryList() {
                           : "bg-green-100 text-green-700"
                       }`}
                     >
-                      {item.analysisType === "channel" ? "Channel Analysis" : "Search"}
+                      {item.analysisType === "channel" ? t('history.channelAnalysis') : t('history.search')}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                      {new Date(item.createdAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                     </span>
                   </div>
 
                   {item.analysisType === "channel" ? (
                     <>
                       <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
-                        {item.channelName || "Unknown Channel"}
+                        {item.channelName || t('history.unknownChannel')}
                       </h3>
                       {item.channelId && (
                         <Link
-                          href={`/?channelId=${item.channelId}`}
+                          href={`/${locale}?channelId=${item.channelId}`}
                           className="inline-flex items-center gap-1 mt-1.5 sm:mt-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                         >
-                          View Analysis
+                          {t('history.viewAnalysis')}
                           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                               strokeLinecap="round"
@@ -143,13 +146,13 @@ export function HistoryList() {
                   ) : (
                     <>
                       <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
-                        Search: "{item.searchQuery}"
+                        {t('history.search')}: "{item.searchQuery}"
                       </h3>
                       <Link
-                        href={`/?q=${encodeURIComponent(item.searchQuery || "")}`}
+                        href={`/${locale}?q=${encodeURIComponent(item.searchQuery || "")}`}
                         className="inline-flex items-center gap-1 mt-1.5 sm:mt-2 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                       >
-                        Repeat Search
+                        {t('history.repeatSearch')}
                         <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
@@ -169,7 +172,7 @@ export function HistoryList() {
           {data?.pagination.hasMore && (
             <div className="text-center py-3 sm:py-4">
               <button className="text-sm sm:text-base text-blue-600 hover:text-blue-700 font-medium">
-                Load More
+                {t('history.loadMore')}
               </button>
             </div>
           )}

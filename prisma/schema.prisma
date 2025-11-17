@@ -14,92 +14,107 @@ datasource db {
 }
 
 // NextAuth.js models
+
+/// 사용자 계정 정보를 저장하는 모델
+/// OAuth 로그인(Google) 또는 관리자 계정으로 생성됩니다
 model User {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  name          String?   // 사용자 이름 (OAuth 프로필에서 가져옴)
+  email         String?   @unique // 이메일 주소 (로그인 식별자)
+  emailVerified DateTime? // 이메일 인증 완료 시각
+  image         String?   // 프로필 이미지 URL (OAuth 제공)
+  createdAt     DateTime  @default(now()) // 계정 생성 시각
+  updatedAt     DateTime  @updatedAt // 계정 정보 수정 시각
 
-  accounts         Account[]
-  sessions         Session[]
-  savedChannels    SavedChannel[]
-  analysisHistory  AnalysisHistory[]
+  // 관계 필드
+  accounts         Account[]         // OAuth 계정 정보들
+  sessions         Session[]         // 로그인 세션들
+  savedChannels    SavedChannel[]    // 북마크한 채널들
+  analysisHistory  AnalysisHistory[] // 분석 히스토리
 
   @@map("users")
 }
 
+/// OAuth 제공자(Google 등)의 계정 정보를 저장하는 모델
+/// NextAuth.js가 OAuth 로그인 시 자동으로 생성합니다
 model Account {
   id                String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId            String  @db.ObjectId
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.String
-  access_token      String? @db.String
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.String
-  session_state     String?
+  userId            String  @db.ObjectId // 연결된 사용자 ID
+  type              String  // OAuth 계정 타입 (예: "oauth")
+  provider          String  // OAuth 제공자 (예: "google")
+  providerAccountId String  // 제공자에서의 사용자 ID
+  refresh_token     String? @db.String // OAuth refresh token
+  access_token      String? @db.String // OAuth access token
+  expires_at        Int?    // 토큰 만료 시각 (Unix timestamp)
+  token_type        String? // 토큰 타입 (예: "Bearer")
+  scope             String? // OAuth 권한 범위
+  id_token          String? @db.String // OpenID Connect ID token
+  session_state     String? // OAuth 세션 상태
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId]) // 같은 제공자의 같은 계정은 중복 불가
   @@map("accounts")
 }
 
+/// 사용자 로그인 세션 정보를 저장하는 모델
+/// 현재는 JWT 전략을 사용하므로 실제로는 사용되지 않습니다
 model Session {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  sessionToken String   @unique
-  userId       String   @db.ObjectId
-  expires      DateTime
+  sessionToken String   @unique // 세션 토큰 (고유값)
+  userId       String   @db.ObjectId // 세션 소유자 ID
+  expires      DateTime // 세션 만료 시각
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
 }
 
+/// 이메일 인증 토큰을 저장하는 모델
+/// 비밀번호 재설정이나 이메일 인증 시 사용됩니다
 model VerificationToken {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  identifier String
-  token      String   @unique
-  expires    DateTime
+  identifier String   // 식별자 (이메일 주소 등)
+  token      String   @unique // 인증 토큰 (고유값)
+  expires    DateTime // 토큰 만료 시각
 
-  @@unique([identifier, token])
+  @@unique([identifier, token]) // 같은 식별자와 토큰 조합은 중복 불가
   @@map("verification_tokens")
 }
 
 // Custom application models
+
+/// 사용자가 북마크한 YouTube 채널 정보를 저장하는 모델
+/// 채널 분석 결과를 저장하고 메모와 태그를 추가할 수 있습니다
 model SavedChannel {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  channelId   String
-  channelName String
-  channelThumbnail String?
-  subscriberCount  String?
-  notes       String?
-  tags        String[]
-  metadata    Json?    // Store full channel analysis data
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String   @db.ObjectId // 북마크한 사용자 ID
+  channelId        String   // YouTube 채널 ID
+  channelName      String   // 채널 이름
+  channelThumbnail String?  // 채널 썸네일 이미지 URL
+  subscriberCount  String?  // 구독자 수
+  notes            String?  // 사용자가 작성한 메모
+  tags             String[] // 사용자가 지정한 태그 목록
+  metadata         Json?    // 전체 채널 분석 데이터 (조회수, 참여율 등)
+  createdAt        DateTime @default(now()) // 북마크 추가 시각
+  updatedAt        DateTime @updatedAt // 북마크 수정 시각
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, channelId])
+  @@unique([userId, channelId]) // 같은 사용자는 같은 채널을 중복 저장 불가
   @@map("saved_channels")
 }
 
+/// 사용자의 채널 검색 및 분석 이력을 저장하는 모델
+/// 어떤 채널을 언제 분석했는지 추적합니다
 model AnalysisHistory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  channelId   String?
-  channelName String?
-  searchQuery String?
-  analysisType String  // "channel" | "search"
-  metadata    Json?    // Store results or relevant data
-  createdAt   DateTime @default(now())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId // 분석을 수행한 사용자 ID
+  channelId    String?  // 분석한 채널 ID (채널 분석인 경우)
+  channelName  String?  // 분석한 채널 이름
+  searchQuery  String?  // 검색어 (채널 검색인 경우)
+  analysisType String   // 분석 유형: "channel" (채널 분석) | "search" (채널 검색)
+  metadata     Json?    // 분석 결과 데이터
+  createdAt    DateTime @default(now()) // 분석 수행 시각
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

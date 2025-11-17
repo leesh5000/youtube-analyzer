@@ -1,13 +1,20 @@
 import { SignInButton } from "@/components/Auth/SignInButton"
 import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { getTranslations } from "next-intl/server"
 
-export default async function SignInPage() {
+export default async function SignInPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
   const session = await auth()
+  const t = await getTranslations()
 
   // Redirect if already signed in
   if (session?.user) {
-    redirect("/")
+    redirect(`/${locale}`)
   }
 
   return (
@@ -15,10 +22,10 @@ export default async function SignInPage() {
       <div className="max-w-md w-full space-y-6 sm:space-y-8">
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome to YouTube Analyzer
+            {t("auth.welcomeTitle")}
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-gray-600">
-            Sign in to save your channel analyses and track your history
+            {t("auth.welcomeSubtitle")}
           </p>
         </div>
 
@@ -27,7 +34,7 @@ export default async function SignInPage() {
         </div>
 
         <p className="text-xs text-center text-gray-500 mt-3 sm:mt-4">
-          By signing in, you agree to our Terms of Service and Privacy Policy
+          {t("auth.termsText")}
         </p>
       </div>
     </div>
