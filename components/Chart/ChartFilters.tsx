@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations, useLocale } from 'next-intl';
+import {useLocale, useTranslations} from 'next-intl';
 
 export type CategoryId =
   | 'all'
@@ -12,7 +12,7 @@ export type CategoryId =
   | '17'  // Sports
   | '27'  // Education
   | '28'  // Science & Technology
-  | '24'  // Entertainment
+  | '24'  // Entertainment+
   | '26'  // Howto & Style
   | '23'  // Comedy
   | '19'  // Travel & Events

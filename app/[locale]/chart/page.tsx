@@ -21,18 +21,8 @@ export default function ChartPage() {
   const [videoType, setVideoType] = useState<VideoType>('shorts');
   const [showHiddenGemsOnly, setShowHiddenGemsOnly] = useState(false);
   const [category, setCategory] = useState<CategoryId>('all');
-  const [period, setPeriod] = useState<PeriodFilter>('daily');
-
-  // Set default date to today
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}.${month}.${day}`;
-  };
-
-  const [selectedDate, setSelectedDate] = useState<string | null>(getTodayDate());
+  const [period, setPeriod] = useState<PeriodFilter>('all');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Convert category to videoCategoryId
   const videoCategoryId = category === 'all' ? undefined : category;
