@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db"
 // PATCH /api/channels/save/[id] - Update saved channel (notes, tags)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -17,13 +17,14 @@ export async function PATCH(
       )
     }
 
+    const { id } = await params
     const body = await request.json()
     const { notes, tags } = body
 
     // Verify ownership
     const savedChannel = await prisma.savedChannel.findUnique({
       where: {
-        id: params.id,
+        id,
       },
     })
 
@@ -43,7 +44,7 @@ export async function PATCH(
 
     const updated = await prisma.savedChannel.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         notes,
@@ -64,7 +65,7 @@ export async function PATCH(
 // DELETE /api/channels/save/[id] - Delete saved channel
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -76,10 +77,12 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Verify ownership
     const savedChannel = await prisma.savedChannel.findUnique({
       where: {
-        id: params.id,
+        id,
       },
     })
 
@@ -99,7 +102,7 @@ export async function DELETE(
 
     await prisma.savedChannel.delete({
       where: {
-        id: params.id,
+        id,
       },
     })
 

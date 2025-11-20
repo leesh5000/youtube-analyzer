@@ -23,11 +23,14 @@ export function SignInButton() {
         email,
         password,
         callbackUrl: `/${locale}`,
-        redirect: true,
+        redirect: false,
       })
 
       if (result?.error) {
         setError(t("auth.invalidCredentials"))
+      } else if (result?.ok) {
+        // Redirect on successful login
+        window.location.href = `/${locale}`
       }
     } catch (err) {
       setError(t("auth.loginError"))

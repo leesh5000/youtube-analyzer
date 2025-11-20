@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         // YouTube 클라이언트 가져오기
         const youtube = getYouTubeClient();
 
-        // 인기 쇼츠 조회
+        // 인기 쇼츠 조회 (client에서 자동으로 50개 모아줌)
         const result = await youtube.getTrendingShorts(
           regionCode,
           50,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         const shorts = result.items;
 
         // 각 쇼츠에 대한 분석 정보 추가
-        const shortsWithAnalytics = shorts.map((short) => {
+        const shortsWithAnalytics = shorts.map((short: any) => {
           const analytics = calculateVideoAnalytics(short);
 
           return {

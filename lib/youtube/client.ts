@@ -125,38 +125,75 @@ export class YouTubeClient {
     maxResults: number = 50,
     videoCategoryId?: string,
     pageToken?: string
-  ) {
+  ): Promise<{ items: any[]; nextPageToken?: string | null }> {
     try {
       // GLOBAL 옵션: 여러 국가의 데이터를 가져와서 합침
       if (regionCode === 'GLOBAL') {
         return await this.getGlobalTrendingShorts(maxResults, videoCategoryId, pageToken);
       }
 
-      // 특정 국가의 인기 동영상 조회
-      const response = await this.youtube.videos.list({
-        part: ['snippet', 'statistics', 'contentDetails'],
-        chart: 'mostPopular',
-        regionCode,
-        maxResults: Math.min(maxResults, 50), // YouTube API limit
-        videoCategoryId: videoCategoryId ? [videoCategoryId] : undefined,
-        pageToken: pageToken,
-      });
+      // maxResults 개수의 Shorts를 모을 때까지 여러 페이지 가져오기
+      const allShorts: any[] = [];
+      let currentPageToken = pageToken;
+      let lastNextPageToken: string | null | undefined;
+      const MAX_PAGES = 10; // 최대 10페이지까지 시도
 
-      const videos = response.data.items || [];
-      const nextPageToken = response.data.nextPageToken;
+      console.log(`[getTrendingShorts] Starting to fetch shorts for region: ${regionCode}, maxResults: ${maxResults}, pageToken: ${pageToken}`);
 
-      // 60초 이하 동영상만 필터링 (Shorts)
-      const shorts = videos.filter((video) => {
-        const duration = video.contentDetails?.duration;
-        return duration && isShortVideo(duration);
-      });
+      for (let page = 0; page < MAX_PAGES && allShorts.length < maxResults; page++) {
+        // 특정 국가의 인기 동영상 조회
+        const response = await this.youtube.videos.list({
+          part: 'snippet,statistics,contentDetails' as any,
+          chart: 'mostPopular',
+          regionCode,
+          maxResults: 50, // 항상 최대로 가져오기
+          videoCategoryId: videoCategoryId,
+          pageToken: currentPageToken,
+        });
+
+        const videos = response.data.items || [];
+        lastNextPageToken = response.data.nextPageToken;
+
+        console.log(`[getTrendingShorts] Page ${page + 1}: Fetched ${videos.length} videos from YouTube API`);
+
+        // 60초 이하 동영상만 필터링 (Shorts)
+        const shorts = videos.filter((video) => {
+          const duration = video.contentDetails?.duration;
+          return duration && isShortVideo(duration);
+        });
+
+        console.log(`[getTrendingShorts] Page ${page + 1}: Found ${shorts.length} shorts after filtering`);
+
+        allShorts.push(...shorts);
+
+        console.log(`[getTrendingShorts] Page ${page + 1}: Total shorts accumulated: ${allShorts.length}`);
+
+        // 다음 페이지가 없으면 중단
+        if (!lastNextPageToken) {
+          break;
+        }
+
+        // 목표 개수 이상 모았으면 중단
+        if (allShorts.length >= maxResults) {
+          break;
+        }
+
+        currentPageToken = lastNextPageToken;
+      }
+
+      // maxResults로 제한
+      const limitedShorts = allShorts.slice(0, maxResults);
+
+      console.log(`[getTrendingShorts] Final result: ${limitedShorts.length} shorts (target: ${maxResults})`);
 
       // 채널 정보 함께 조회
-      const enrichedShorts = await this.enrichWithChannelInfo(shorts);
+      const enrichedShorts = await this.enrichWithChannelInfo(limitedShorts);
+
+      console.log(`[getTrendingShorts] Returning ${enrichedShorts.length} enriched shorts with nextPageToken: ${lastNextPageToken}`);
 
       return {
         items: enrichedShorts,
-        nextPageToken,
+        nextPageToken: lastNextPageToken,
       };
     } catch (error) {
       console.error('Error fetching trending shorts:', error);
@@ -176,38 +213,63 @@ export class YouTubeClient {
     maxResults: number = 50,
     videoCategoryId?: string,
     pageToken?: string
-  ) {
+  ): Promise<{ items: any[]; nextPageToken?: string | null }> {
     try {
       // GLOBAL 옵션: 여러 국가의 데이터를 가져와서 합침
       if (regionCode === 'GLOBAL') {
         return await this.getGlobalTrendingVideos(maxResults, videoCategoryId, pageToken);
       }
 
-      // 특정 국가의 인기 동영상 조회
-      const response = await this.youtube.videos.list({
-        part: ['snippet', 'statistics', 'contentDetails'],
-        chart: 'mostPopular',
-        regionCode,
-        maxResults: Math.min(maxResults, 50), // YouTube API limit
-        videoCategoryId: videoCategoryId ? [videoCategoryId] : undefined,
-        pageToken: pageToken,
-      });
+      // maxResults 개수의 일반 동영상을 모을 때까지 여러 페이지 가져오기
+      const allVideos: any[] = [];
+      let currentPageToken = pageToken;
+      let lastNextPageToken: string | null | undefined;
+      const MAX_PAGES = 10; // 최대 10페이지까지 시도
 
-      const videos = response.data.items || [];
-      const nextPageToken = response.data.nextPageToken;
+      for (let page = 0; page < MAX_PAGES && allVideos.length < maxResults; page++) {
+        // 특정 국가의 인기 동영상 조회
+        const response = await this.youtube.videos.list({
+          part: 'snippet,statistics,contentDetails' as any,
+          chart: 'mostPopular',
+          regionCode,
+          maxResults: 50, // 항상 최대로 가져오기
+          videoCategoryId: videoCategoryId,
+          pageToken: currentPageToken,
+        });
 
-      // 60초 초과 동영상만 필터링 (일반 동영상)
-      const regularVideos = videos.filter((video) => {
-        const duration = video.contentDetails?.duration;
-        return duration && !isShortVideo(duration);
-      });
+        const videos = response.data.items || [];
+        lastNextPageToken = response.data.nextPageToken;
+
+        // 60초 초과 동영상만 필터링 (일반 동영상)
+        const regularVideos = videos.filter((video) => {
+          const duration = video.contentDetails?.duration;
+          return duration && !isShortVideo(duration);
+        });
+
+        allVideos.push(...regularVideos);
+
+        // 다음 페이지가 없으면 중단
+        if (!lastNextPageToken) {
+          break;
+        }
+
+        // 목표 개수 이상 모았으면 중단
+        if (allVideos.length >= maxResults) {
+          break;
+        }
+
+        currentPageToken = lastNextPageToken;
+      }
+
+      // maxResults로 제한
+      const limitedVideos = allVideos.slice(0, maxResults);
 
       // 채널 정보 함께 조회
-      const enrichedVideos = await this.enrichWithChannelInfo(regularVideos);
+      const enrichedVideos = await this.enrichWithChannelInfo(limitedVideos);
 
       return {
         items: enrichedVideos,
-        nextPageToken,
+        nextPageToken: lastNextPageToken,
       };
     } catch (error) {
       console.error('Error fetching trending videos:', error);

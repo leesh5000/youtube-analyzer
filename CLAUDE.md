@@ -24,6 +24,36 @@ npx prisma db push   # Push schema changes to MongoDB (no migrations needed for 
 npx prisma studio    # Open Prisma Studio GUI to view/edit database
 ```
 
+### Infrastructure Commands (Docker)
+```bash
+# Start all infrastructure services (MongoDB + Redis)
+docker compose -f docker-compose.infra.yml up -d
+
+# Start specific services
+docker compose -f docker-compose.infra.yml up -d mongodb
+docker compose -f docker-compose.infra.yml up -d redis
+
+# Stop all services
+docker compose -f docker-compose.infra.yml down
+
+# View logs
+docker compose -f docker-compose.infra.yml logs -f
+
+# Check service status
+docker compose -f docker-compose.infra.yml ps
+```
+
+**Infrastructure Components**:
+- **MongoDB 7.0**: Primary database with replica set configured
+  - Port: 27017
+  - Volumes: `mongodb_data`, `mongodb_config`
+  - Healthcheck: mongosh ping every 10s
+- **Redis 7-alpine**: Server-side caching layer
+  - Port: 6379
+  - Persistence: AOF (Append Only File) enabled
+  - Volume: `redis_data`
+  - Healthcheck: redis-cli ping every 10s
+
 ### Environment Setup
 **CRITICAL**: This application requires multiple environment variables to function.
 
@@ -370,6 +400,38 @@ Data fetching hooks follow this structure:
     - Access data via `data.pages` array (not `data.shorts` or `data.videos`)
     - Each page contains array of items and optional `nextPageToken`
 
+### Chart Page Filtering Pattern
+The chart page (`app/[locale]/chart/page.tsx`) implements multi-dimensional filtering with dynamic date generation:
+
+**Filter Architecture**:
+- Filter state managed with React `useState` hooks: `regionCode`, `videoType`, `category`, `period`, `selectedDate`, `showHiddenGemsOnly`
+- Filters are applied via `useMemo` to prevent unnecessary recalculations
+- ChartFilters component displays board-style layout with columns: Category, Country, Period, Date
+
+**Dynamic Date Generation**:
+- Date options change based on selected period filter (daily/weekly/monthly/yearly/yearEnd/all)
+- Locale-aware date formatting using day/month names from translations
+- Date column hidden when "all" period is selected
+
+**Period Filter Behavior**:
+- `daily`: Shows last 14 days with day of week (e.g., "2025.11.20(수)")
+- `weekly`: Shows last 12 weeks starting from Monday (e.g., "2025.11.18 (12주차)")
+- `monthly`: Shows last 12 months with month names (e.g., "2025.11월")
+- `yearly`: Shows last 5 years (e.g., "2025년")
+- `yearEnd`: Shows last 5 Decembers (e.g., "2025년 12월")
+- `all`: No date filter, shows all videos
+
+**Video Filtering Logic**:
+- Period + date combination: When both are selected, filter by specific date range
+  - Daily: Exact day match
+  - Weekly: 7-day range starting from selected Monday
+  - Monthly: Specific month match
+  - Yearly: Specific year match
+  - YearEnd: December of specific year
+- Period only: When no specific date selected, filter by relative time from now
+- Hidden gems: Separate filter for videos with `viewCount / subscriberCount >= 2.0`
+- Multiple filters can be combined (period + hidden gems + category + region)
+
 ### Locale-Aware Navigation
 All internal links must include the current locale:
 ```typescript
@@ -389,6 +451,36 @@ signIn("google", { callbackUrl: `/${locale}` })
 redirect(`/${locale}/auth/signin`)
 ```
 
+**Active Navigation Link Styling**:
+Use `usePathname()` to highlight the current page in navigation:
+```typescript
+import { usePathname } from "next/navigation"
+import { useLocale } from "next-intl"
+
+const pathname = usePathname()
+const locale = useLocale()
+
+// Desktop navigation - active link in blue
+<Link
+  href={`/${locale}/saved`}
+  className={`text-sm font-medium transition-colors ${
+    pathname === `/${locale}/saved`
+      ? 'text-blue-600'
+      : 'text-gray-700 hover:text-blue-600'
+  }`}
+>
+
+// Mobile navigation - active link with blue text and background
+<Link
+  href={`/${locale}/saved`}
+  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+    pathname === `/${locale}/saved`
+      ? 'text-blue-600 bg-blue-50'
+      : 'text-gray-700 hover:bg-gray-100'
+  }`}
+>
+```
+
 **Date and Number Formatting**:
 All dates and numbers should be formatted according to the current locale:
 ```typescript
@@ -404,11 +496,29 @@ new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US').format(number)
 new Date(item.createdAt).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')
 ```
 
-## Testing Notes
+## Testing
 
-There are currently no automated tests. When adding tests:
+### Running Tests
+```bash
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+```
+
+### Test Configuration
+- **Framework**: Jest with React Testing Library
+- **Environment**: jsdom (browser environment simulation)
+- **Setup**: `jest.config.ts` and `jest.setup.ts`
+- **Coverage**: Configured to collect from `lib/`, `components/`, `hooks/`, and `app/` directories
+
+### Testing Patterns
 - Mock the googleapis YouTube client, not the API routes
 - Test analytics functions independently (they're pure functions)
 - Use test API keys with quota limits for integration tests
 - Mock Prisma client for database tests
 - Test protected routes with mocked sessions
+- Component tests: Use `@testing-library/react` and `@testing-library/jest-dom`
+- Existing test files:
+  - `components/Shorts/ShortsGrid.test.tsx`
+  - `components/Shorts/ShortsCard.test.tsx`
+  - `lib/youtube/utils.test.ts`

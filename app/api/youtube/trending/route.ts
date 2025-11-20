@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         // YouTube 클라이언트 가져오기
         const youtube = getYouTubeClient();
 
-        // 인기 일반 동영상 조회
+        // 인기 일반 동영상 조회 (client에서 자동으로 50개 모아줌)
         const result = await youtube.getTrendingVideos(
           regionCode,
           50,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         const videos = result.items;
 
         // 각 동영상에 대한 분석 정보 추가
-        const videosWithAnalytics = videos.map((video) => {
+        const videosWithAnalytics = videos.map((video: any) => {
           const analytics = calculateVideoAnalytics(video);
 
           return {

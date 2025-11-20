@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { UserProfile } from "@/components/Auth/UserProfile"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
@@ -10,6 +11,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const t = useTranslations()
   const locale = useLocale()
+  const pathname = usePathname()
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -22,25 +24,51 @@ export function Header() {
             <nav className="hidden md:flex items-center gap-6">
               <Link
                 href={`/${locale}`}
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  pathname === `/${locale}`
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 {t("nav.analyze")}
               </Link>
               <Link
                 href={`/${locale}/shorts`}
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  pathname === `/${locale}/shorts`
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 {t("nav.shorts")}
               </Link>
               <Link
+                href={`/${locale}/chart`}
+                className={`text-sm font-medium transition-colors ${
+                  pathname === `/${locale}/chart`
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                {t("nav.chart")}
+              </Link>
+              <Link
                 href={`/${locale}/saved`}
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  pathname === `/${locale}/saved`
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 {t("nav.saved")}
               </Link>
               <Link
                 href={`/${locale}/history`}
-                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  pathname === `/${locale}/history`
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 {t("nav.history")}
               </Link>
@@ -88,28 +116,55 @@ export function Header() {
               <Link
                 href={`/${locale}`}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === `/${locale}`
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
                 {t("nav.analyze")}
               </Link>
               <Link
                 href={`/${locale}/shorts`}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === `/${locale}/shorts`
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
                 {t("nav.shorts")}
               </Link>
               <Link
+                href={`/${locale}/chart`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === `/${locale}/chart`
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {t("nav.chart")}
+              </Link>
+              <Link
                 href={`/${locale}/saved`}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === `/${locale}/saved`
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
                 {t("nav.saved")}
               </Link>
               <Link
                 href={`/${locale}/history`}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  pathname === `/${locale}/history`
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
                 {t("nav.history")}
               </Link>
