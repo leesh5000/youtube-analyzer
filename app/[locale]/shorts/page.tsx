@@ -25,23 +25,16 @@ export default function ShortsPage() {
     data: shortsData,
     isLoading: shortsLoading,
     error: shortsError,
-    fetchNextPage: fetchNextShortsPage,
-    hasNextPage: hasNextShortsPage,
-    isFetchingNextPage: isFetchingNextShortsPage,
   } = useTrendingShorts(regionCode);
 
   const {
     data: videosData,
     isLoading: videosLoading,
     error: videosError,
-    fetchNextPage: fetchNextVideosPage,
-    hasNextPage: hasNextVideosPage,
-    isFetchingNextPage: isFetchingNextVideosPage,
   } = useTrendingVideos(regionCode);
 
   const isLoading = shortsLoading || videosLoading;
   const error = shortsError || videosError;
-  const isFetchingMore = isFetchingNextShortsPage || isFetchingNextVideosPage;
 
   // Combine and filter videos
   const filteredAndSortedVideos = useMemo(() => {
@@ -49,15 +42,13 @@ export default function ShortsPage() {
     let combinedVideos: CombinedVideoData[] = [];
 
     if (videoType === 'all' || videoType === 'shorts') {
-      // Flatten all pages
-      const allShorts = shortsData?.pages.flatMap(page => page.shorts) || [];
+      const allShorts = shortsData?.shorts || [];
       const shortsWithFlag = allShorts.map(s => ({ ...s, isShort: true }));
       combinedVideos = [...combinedVideos, ...shortsWithFlag];
     }
 
     if (videoType === 'all' || videoType === 'videos') {
-      // Flatten all pages
-      const allVideos = videosData?.pages.flatMap(page => page.videos) || [];
+      const allVideos = videosData?.videos || [];
       const videosWithFlag = allVideos.map(v => ({ ...v, isShort: false }));
       combinedVideos = [...combinedVideos, ...videosWithFlag];
     }
@@ -156,7 +147,7 @@ export default function ShortsPage() {
     });
 
     return filtered;
-  }, [shortsData?.pages, videosData?.pages, videoType, filters]);
+  }, [shortsData, videosData, videoType, filters]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -251,7 +242,7 @@ export default function ShortsPage() {
               <span className="font-semibold">{filteredAndSortedVideos.length}</span>
               <span>{t('trendingTitle')}</span>
               <span className="text-gray-400">•</span>
-              <span>{shortsData?.pages[0]?.region || videosData?.pages[0]?.region || regionCode}</span>
+              <span>{shortsData?.region || videosData?.region || regionCode}</span>
             </div>
           )}
         </div>
@@ -269,44 +260,6 @@ export default function ShortsPage() {
             isLoading={isLoading}
             error={error || undefined}
           />
-
-          {/* Load More Button */}
-          {!isLoading && (
-            <div className="flex justify-center mt-8 gap-4">
-              {videoType === 'shorts' && hasNextShortsPage && (
-                <button
-                  onClick={() => fetchNextShortsPage()}
-                  disabled={isFetchingNextShortsPage}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isFetchingNextShortsPage ? t('loading') : '더 불러오기'}
-                </button>
-              )}
-
-              {videoType === 'videos' && hasNextVideosPage && (
-                <button
-                  onClick={() => fetchNextVideosPage()}
-                  disabled={isFetchingNextVideosPage}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isFetchingNextVideosPage ? t('loading') : '더 불러오기'}
-                </button>
-              )}
-
-              {videoType === 'all' && (hasNextShortsPage || hasNextVideosPage) && (
-                <button
-                  onClick={() => {
-                    if (hasNextShortsPage) fetchNextShortsPage();
-                    if (hasNextVideosPage) fetchNextVideosPage();
-                  }}
-                  disabled={isFetchingMore}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isFetchingMore ? t('loading') : '더 불러오기'}
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

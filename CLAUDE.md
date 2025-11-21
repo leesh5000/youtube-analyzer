@@ -24,6 +24,13 @@ npx prisma db push   # Push schema changes to MongoDB (no migrations needed for 
 npx prisma studio    # Open Prisma Studio GUI to view/edit database
 ```
 
+### Testing Commands
+```bash
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+```
+
 ### Infrastructure Commands (Docker)
 ```bash
 # Start all infrastructure services (MongoDB + Redis)
@@ -159,12 +166,14 @@ session.user.isAdmin     // Boolean flag for admin users
 - `Session`: Not used (JWT strategy)
 - `SavedChannel`: User's bookmarked channels with notes and tags
 - `AnalysisHistory`: Tracks channel searches and analyses
+- `TrendingVideo`: Stores trending video snapshots collected via batch jobs
 
 **Key Patterns**:
 - All IDs are MongoDB ObjectIds (`@db.ObjectId`)
 - Relations use `@relation` with cascade deletes
 - `SavedChannel` has unique constraint on `[userId, channelId]`
 - `metadata` fields store JSON data for flexible storage
+- `TrendingVideo` has composite indexes on `[regionCode, categoryId, videoType, collectedAt]` for efficient chart queries
 
 **Generated Prisma Client**:
 - Located in `node_modules/.prisma/client/` (default output)
@@ -198,14 +207,29 @@ Contains pure calculation functions for metrics:
 - `GET /api/youtube/channel?channelId={id}`: Returns comprehensive channel analysis
 - `GET /api/youtube/search?q={query}`: Searches for channels
 
-**Trending Videos** (public endpoints with pagination):
-- `GET /api/youtube/shorts/trending?regionCode={code}&pageToken={token}`: Fetch trending Shorts (≤60s)
-- `GET /api/youtube/trending?regionCode={code}&pageToken={token}`: Fetch trending regular videos (>60s)
-- Both endpoints support:
-  - `regionCode`: Country code (KR, US, JP, GLOBAL, etc.)
-  - `videoCategoryId`: Optional category filter
-  - `pageToken`: For pagination (returned as `nextPageToken` in response)
-  - Returns 50 videos per page with enriched channel information
+**Trending Videos** (DB-based, no pagination):
+- `GET /api/youtube/shorts/trending?regionCode={code}&videoCategoryId={id}&period={period}`: Fetch trending Shorts from DB
+- `GET /api/youtube/trending?regionCode={code}&videoCategoryId={id}&period={period}`: Fetch trending videos from DB
+- Both endpoints:
+  - Query MongoDB `TrendingVideo` collection (not YouTube API directly)
+  - Support `regionCode`: GLOBAL, KR, US, JP, TW, VN
+  - Support `videoCategoryId`: Optional category filter (null = all)
+  - Support `period`: daily, weekly, monthly, yearly, yearEnd, all (filters by publishedAt)
+  - Return up to 50 videos per region/category/type combination
+  - Cached in Redis for 5 minutes
+
+**Batch Jobs**:
+- `POST /api/batch/collect-trending`: Collect trending data from YouTube API and store in DB
+  - Runs automatically every 3 hours via Vercel Cron (see `vercel.json`)
+  - Collects 180 combinations: 6 regions × 15 categories × 2 video types
+  - Deletes old data and inserts fresh trending snapshots
+  - Returns summary: `{ totalCollected, totalErrors, collectedAt, durationMs }`
+
+**Home Rankings**:
+- `GET /api/home/rankings?videoType={shorts|videos}&period={daily|weekly|monthly|all}`: Fetch aggregated rankings for home page
+  - Returns 7 ranking categories in a single response
+  - Cached in Redis for 5 minutes
+  - Rankings include: topVideos, risingVideos, highEngagement, topChannels, activeChannels, subscriberSurge, latestTrending
 
 **User Features** (require authentication):
 - `POST /api/channels/save`: Save a channel to bookmarks
@@ -222,15 +246,15 @@ Response from `/api/youtube/channel` includes:
 - Performance score and insights
 
 Response from trending endpoints includes:
-- Array of videos/shorts with full metadata (title, description, thumbnails, statistics)
-- Enriched channel info (subscriber count, video count) via `enrichWithChannelInfo()`
-- Calculated engagement rate for each video
+- Array of videos/shorts from DB with full metadata (title, description, thumbnails, statistics)
+- Enriched channel info (subscriber count, video count) stored during batch collection
+- Pre-calculated engagement rate for each video
 - Region code and total count
-- `nextPageToken` for pagination
+- No pagination (returns all matching videos up to 50 per combination)
 
 ### Data Flow Pattern
 
-**YouTube Analysis Flow**:
+**YouTube Analysis Flow** (Channel analysis):
 1. User interacts with component (e.g., `ChannelSearch.tsx`)
 2. Component uses hook (e.g., `useChannelAnalysis()` from `hooks/`)
 3. Hook uses TanStack Query to fetch from API route
@@ -238,6 +262,15 @@ Response from trending endpoints includes:
 5. Client calls YouTube Data API v3 via googleapis
 6. Analytics functions process raw YouTube data
 7. Structured response flows back through the stack
+
+**Trending Videos Flow** (Chart page):
+1. Batch job (`POST /api/batch/collect-trending`) runs every 3 hours via Vercel Cron
+2. Job calls YouTube API v3 to fetch trending videos for all 180 combinations
+3. Data stored in MongoDB `TrendingVideo` collection (replaces old data per combination)
+4. User visits chart page → hooks call trending API endpoints
+5. API endpoints query MongoDB (not YouTube API)
+6. Results cached in Redis for 5 minutes
+7. Client applies additional date filtering if needed
 
 **User Data Flow**:
 1. User authenticates via NextAuth.js
@@ -337,20 +370,31 @@ This applies to:
 - `generateStaticParams()` functions
 
 ### YouTube API Quota Management
-YouTube Data API has quota limits. Current implementation:
-- Channel analysis: Fetches max 50 videos per analysis (one quota unit per video)
-- Trending videos: Returns 50 items per page with pagination support
+YouTube Data API has quota limits (10,000 units/day by default). Current implementation drastically reduces quota usage:
+
+**Batch Job Strategy**:
+- Trending data collected every 3 hours via batch job (not per-user request)
+- Single batch collects ~360 API units (180 combinations × ~2 units each)
+- 8 batches/day = ~2,880 units/day total for all trending data
+- All users share the same trending dataset from DB (zero additional quota)
+
+**Traditional Endpoints** (still use quota):
+- Channel analysis: ~50 units per analysis (fetches 50 videos)
+- Channel search: ~100 units per search
 - **Server-side Redis caching**:
-  - Trending data cached for 5 minutes - reduces quota usage by 80-90%
   - Channel analysis cached for 10 minutes
   - Search results cached for 15 minutes
-  - Shared cache across all users (not per-user)
+  - Reduces duplicate requests by 80-90%
 - **Client-side TanStack Query caching**:
-  - Short-lived 30-second cache to prevent rapid re-requests
-  - Defers to server Redis cache as primary source
-- **Expected quota reduction**: With Redis caching, same data requests consume near-zero quota for cache duration
-- Monitor quota usage in Google Cloud Console
-- Cache can be disabled by not setting `REDIS_URL` environment variable
+  - 30-second cache prevents rapid re-requests
+  - Defers to server Redis cache
+
+**Quota Calculation Example**:
+- Before: 1,000 users viewing trending page = 1,000 × 2 units = 2,000 units
+- After: 1,000 users viewing trending page = 0 units (served from DB)
+- Batch overhead: ~2,880 units/day regardless of traffic
+
+Monitor quota usage in Google Cloud Console. Cache can be disabled by not setting `REDIS_URL`.
 
 ### Error Handling
 - API routes catch errors and return appropriate HTTP status codes
@@ -388,17 +432,37 @@ export default async function ProtectedPage({
 
 ### Custom Hooks Pattern
 Data fetching hooks follow this structure:
-- Use TanStack Query's `useQuery`, `useInfiniteQuery`, or `useMutation`
+- Use TanStack Query's `useQuery` or `useMutation`
 - Handle loading, error, and success states
 - Export typed return values
 - Examples:
   - `useChannelAnalysis()`: Single query for channel data
   - `useSavedChannels()`, `useAnalysisHistory()`: List queries
-  - `useTrendingShorts()`, `useTrendingVideos()`: Infinite queries with pagination
-    - Use `useInfiniteQuery` for paginated data
-    - Cache duration: `staleTime: 5 * 60 * 1000` (5 minutes), `gcTime: 10 * 60 * 1000` (10 minutes)
-    - Access data via `data.pages` array (not `data.shorts` or `data.videos`)
-    - Each page contains array of items and optional `nextPageToken`
+  - `useTrendingShorts()`, `useTrendingVideos()`: Simple queries (no pagination)
+    - Changed from `useInfiniteQuery` to `useQuery` after DB migration
+    - Cache duration: `staleTime: 30 * 1000` (30 seconds), `gcTime: 10 * 60 * 1000` (10 minutes)
+    - Access data directly: `data.shorts` or `data.videos` (not `data.pages`)
+    - No pagination - all matching videos returned at once (up to 50 per combination)
+
+### React Key Uniqueness Pattern
+When rendering lists where the same item may appear in multiple contexts, ensure keys are unique across all lists:
+
+```typescript
+// ❌ BAD - Same video can appear in multiple ranking categories
+{videos.map((video) => (
+  <div key={video.id}>...</div>
+))}
+
+// ✅ GOOD - Prefix with context identifier
+{videos.map((video, index) => (
+  <div key={`${metricKey}-${video.id}-${index}`}>...</div>
+))}
+```
+
+This pattern is used in:
+- `VideoRankingCard.tsx`: Prefixes with metric type (views/ratio/engagement)
+- `ChannelRankingCard.tsx`: Prefixes with metric type (subscribers/trendingCount/growth)
+- `HorizontalVideoScroll.tsx`: Prefixes with 'latest-' to distinguish from ranking cards
 
 ### Chart Page Filtering Pattern
 The chart page (`app/[locale]/chart/page.tsx`) implements multi-dimensional filtering with dynamic date generation:
@@ -422,15 +486,21 @@ The chart page (`app/[locale]/chart/page.tsx`) implements multi-dimensional filt
 - `all`: No date filter, shows all videos
 
 **Video Filtering Logic**:
-- Period + date combination: When both are selected, filter by specific date range
-  - Daily: Exact day match
+- **Server-side filtering** (API endpoints): Period parameter filters videos by `publishedAt` date
+  - Queries MongoDB with date range filters based on period
+  - Returns videos published within the specified period
+- **Client-side filtering** (Chart page): Date parameter filters results from API
+  - Daily: Exact day match (e.g., "오늘" filters to videos published on 2025-11-21)
   - Weekly: 7-day range starting from selected Monday
   - Monthly: Specific month match
   - Yearly: Specific year match
   - YearEnd: December of specific year
-- Period only: When no specific date selected, filter by relative time from now
+- **Important**: Date filtering is by video **publish date**, not trending collection date
+  - Most trending videos were published days/weeks ago (not today)
+  - Initial filter of "daily + today" may return very few results
+  - Users should select "all" period to see all trending videos
 - Hidden gems: Separate filter for videos with `viewCount / subscriberCount >= 2.0`
-- Multiple filters can be combined (period + hidden gems + category + region)
+- Multiple filters can be combined (period + date + hidden gems + category + region)
 
 ### Locale-Aware Navigation
 All internal links must include the current locale:
@@ -522,3 +592,49 @@ npm run test:coverage # Run tests with coverage report
   - `components/Shorts/ShortsGrid.test.tsx`
   - `components/Shorts/ShortsCard.test.tsx`
   - `lib/youtube/utils.test.ts`
+
+## Batch Jobs and Deployment
+
+### Vercel Cron Configuration
+The batch job is configured in `vercel.json`:
+```json
+{
+  "crons": [
+    {
+      "path": "/api/batch/collect-trending",
+      "schedule": "0 */3 * * *"
+    }
+  ]
+}
+```
+
+**Schedule**: Runs every 3 hours (0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00 UTC)
+
+### Manual Batch Execution (Development)
+To manually trigger the batch job locally:
+```bash
+curl -X POST http://localhost:3000/api/batch/collect-trending
+```
+
+Expected response after ~1-2 minutes:
+```json
+{
+  "success": true,
+  "totalCollected": 5681,
+  "totalErrors": 24,
+  "errors": ["Failed to collect shorts for GLOBAL/27", ...],
+  "collectedAt": "2025-11-21T01:40:54.794Z",
+  "durationMs": 108329
+}
+```
+
+**Note**: Some errors are expected for certain category/region combinations where YouTube doesn't provide trending data.
+
+### Database Seeding
+After deploying or resetting the database:
+1. Ensure MongoDB and Redis are running: `docker compose -f docker-compose.infra.yml up -d`
+2. Run Prisma sync: `npx prisma db push`
+3. Run initial batch job: `curl -X POST http://localhost:3000/api/batch/collect-trending`
+4. Verify data in Prisma Studio: `npx prisma studio`
+
+The batch job will automatically run every 3 hours on Vercel after deployment.

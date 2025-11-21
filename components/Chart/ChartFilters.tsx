@@ -1,6 +1,8 @@
 'use client';
 
 import {useLocale, useTranslations} from 'next-intl';
+import { format, subDays, subWeeks, subMonths, subYears, startOfWeek } from 'date-fns';
+import { ko, enUS } from 'date-fns/locale';
 
 export type CategoryId =
   | 'all'
@@ -46,6 +48,7 @@ export function ChartFilters({
 }: ChartFiltersProps) {
   const t = useTranslations('chart.filters');
   const locale = useLocale();
+  const dateLocale = locale === 'ko' ? ko : enUS;
 
   const categories: { id: CategoryId; label: string }[] = [
     { id: 'all', label: t('allCategories') },
@@ -83,130 +86,91 @@ export function ChartFilters({
     { id: 'all', label: t('allTime') },
   ];
 
-  // Generate date list based on selected period
-  const generateDates = () => {
-    const dates = [];
-    const today = new Date();
-    const dayNames = locale === 'ko'
-      ? ['일', '월', '화', '수', '목', '금', '토']
-      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // Generate date options based on period
+  const generateDates = (): { value: string; label: string }[] => {
+    const now = new Date();
+    const dates: { value: string; label: string }[] = [];
 
     switch (period) {
       case 'daily': {
-        // Show last 14 days
+        // Last 14 days
         for (let i = 0; i < 14; i++) {
-          const date = new Date(today);
-          date.setDate(today.getDate() - i);
-
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const dateStr = `${year}.${month}.${day}`;
-          const dayOfWeek = dayNames[date.getDay()];
-
-          dates.push({
-            value: dateStr,
-            label: `${dateStr}(${dayOfWeek})`,
-          });
+          const date = subDays(now, i);
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const label = format(date, 'yyyy.MM.dd(E)', { locale: dateLocale });
+          dates.push({ value: dateStr, label });
         }
         break;
       }
 
       case 'weekly': {
-        // Show last 12 weeks (starting from Monday of each week)
+        // Last 12 weeks (starting from Monday)
         for (let i = 0; i < 12; i++) {
-          const date = new Date(today);
-          date.setDate(today.getDate() - (i * 7));
-
-          // Get Monday of this week
-          const dayOfWeek = date.getDay();
-          const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 0, Monday is 1
-          date.setDate(date.getDate() - diff);
-
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const dateStr = `${year}.${month}.${day}`;
-
-          // Calculate week number
-          const weekNum = 12 - i;
+          const weekStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+          const dateStr = format(weekStart, 'yyyy-MM-dd');
+          const weekNumber = 12 - i;
           const label = locale === 'ko'
-            ? `${dateStr} (${weekNum}주차)`
-            : `${dateStr} (Week ${weekNum})`;
-
-          dates.push({
-            value: dateStr,
-            label,
-          });
+            ? `${format(weekStart, 'yyyy.MM.dd', { locale: dateLocale })} (${weekNumber}주차)`
+            : `${format(weekStart, 'yyyy.MM.dd', { locale: dateLocale })} (Week ${weekNumber})`;
+          dates.push({ value: dateStr, label });
         }
         break;
       }
 
       case 'monthly': {
-        // Show last 12 months
+        // Last 12 months
         for (let i = 0; i < 12; i++) {
-          const date = new Date(today);
-          date.setMonth(today.getMonth() - i);
-          date.setDate(1); // First day of month
-
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const dateStr = `${year}.${month}`;
-
-          const monthNames = locale === 'ko'
-            ? ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
-            : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const monthName = monthNames[date.getMonth()];
-
-          dates.push({
-            value: dateStr,
-            label: `${year}.${monthName}`,
-          });
+          const date = subMonths(now, i);
+          const dateStr = format(date, 'yyyy-MM-01');
+          const label = locale === 'ko'
+            ? `${format(date, 'yyyy.MM', { locale: dateLocale })}월`
+            : format(date, 'MMM yyyy', { locale: dateLocale });
+          dates.push({ value: dateStr, label });
         }
         break;
       }
 
       case 'yearly': {
-        // Show last 5 years
+        // Last 5 years
         for (let i = 0; i < 5; i++) {
-          const year = today.getFullYear() - i;
-          const dateStr = `${year}`;
-
-          dates.push({
-            value: dateStr,
-            label: locale === 'ko' ? `${year}년` : `${year}`,
-          });
+          const date = subYears(now, i);
+          const dateStr = format(date, 'yyyy-01-01');
+          const label = locale === 'ko'
+            ? `${format(date, 'yyyy', { locale: dateLocale })}년`
+            : format(date, 'yyyy', { locale: dateLocale });
+          dates.push({ value: dateStr, label });
         }
         break;
       }
 
       case 'yearEnd': {
-        // Show last 5 year-ends (December)
+        // Last 5 Decembers
         for (let i = 0; i < 5; i++) {
-          const year = today.getFullYear() - i;
-          const dateStr = `${year}.12`;
-
-          dates.push({
-            value: dateStr,
-            label: locale === 'ko' ? `${year}년 12월` : `${year} Dec`,
-          });
+          const year = now.getFullYear() - i;
+          const date = new Date(year, 11, 1); // December 1st
+          const dateStr = format(date, 'yyyy-12-01');
+          const label = locale === 'ko'
+            ? `${year}년 12월`
+            : `Dec ${year}`;
+          dates.push({ value: dateStr, label });
         }
         break;
       }
 
       case 'all':
       default:
-        // No date filter needed for 'all'
-        break;
+        // No date filter for 'all'
+        return [];
     }
 
     return dates;
   };
 
-  const dates = generateDates();
+  const dateOptions = generateDates();
+  const showDateColumn = period !== 'all' && dateOptions.length > 0;
 
   return (
-    <div className="bg-white border-b border-gray-200 sticky top-16 z-40">
+    <div className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         {/* Board-style filter layout */}
         <div className="overflow-x-auto">
@@ -266,7 +230,7 @@ export function ChartFilters({
             </div>
 
             {/* Period Filter Column */}
-            <div className="flex-1 min-w-[110px] border-r border-gray-200 px-3">
+            <div className={`flex-1 min-w-[110px] px-3 ${showDateColumn ? 'border-r border-gray-200' : ''}`}>
               <div className="mb-2">
                 <h3 className="text-xs font-semibold text-gray-700">
                   {t('period')}
@@ -289,26 +253,26 @@ export function ChartFilters({
               </div>
             </div>
 
-            {/* Date Selection Column */}
-            {period !== 'all' && (
-              <div className="flex-1 min-w-[140px] pl-3">
+            {/* Date Column (conditional) */}
+            {showDateColumn && (
+              <div className="flex-1 min-w-[150px] px-3">
                 <div className="mb-2">
                   <h3 className="text-xs font-semibold text-gray-700">
                     {t('date')}
                   </h3>
                 </div>
                 <div className="max-h-[200px] overflow-y-auto space-y-0.5 pr-2">
-                  {dates.map((date) => (
+                  {dateOptions.map((dateOption) => (
                     <button
-                      key={date.value}
-                      onClick={() => onDateChange(date.value)}
+                      key={dateOption.value}
+                      onClick={() => onDateChange(dateOption.value)}
                       className={`w-full text-left px-2 py-1.5 text-xs transition-colors ${
-                        selectedDate === date.value
+                        selectedDate === dateOption.value
                           ? 'bg-red-600 text-white font-medium'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
-                      {date.label}
+                      {dateOption.label}
                     </button>
                   ))}
                 </div>

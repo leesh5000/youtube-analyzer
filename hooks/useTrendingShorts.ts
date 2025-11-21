@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
 export interface ShortData {
@@ -9,6 +9,7 @@ export interface ShortData {
   publishedAt: string;
   channelId: string;
   channelTitle: string;
+  categoryId: string | null;
   viewCount: number;
   likeCount: number;
   commentCount: number;
@@ -31,23 +32,22 @@ export interface TrendingShortsData {
 }
 
 export function useTrendingShorts(
-  regionCode: string = 'US',
-  videoCategoryId?: string
+  regionCode: string = 'KR',
+  videoCategoryId?: string,
+  period: string = 'all'
 ) {
-  return useInfiniteQuery<TrendingShortsData>({
-    queryKey: ['trendingShorts', regionCode, videoCategoryId],
-    queryFn: async ({ pageParam }) => {
+  return useQuery<TrendingShortsData>({
+    queryKey: ['trendingShorts', regionCode, videoCategoryId, period],
+    queryFn: async () => {
       const response = await axios.get('/api/youtube/shorts/trending', {
         params: {
           regionCode,
           videoCategoryId,
-          pageToken: pageParam,
+          period,
         },
       });
       return response.data;
     },
-    initialPageParam: undefined,
-    getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     staleTime: 30 * 1000, // 30초 동안 캐시 유지 (서버 Redis 캐시가 primary)
     gcTime: 10 * 60 * 1000, // 10분 후 가비지 컬렉션
   });

@@ -120,3 +120,47 @@ model AnalysisHistory {
 
   @@map("analysis_history")
 }
+
+/// YouTube 인기 동영상/쇼츠 데이터를 저장하는 모델
+/// 배치 작업으로 주기적으로 수집되며, 차트 페이지에서 조회됩니다
+model TrendingVideo {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  // YouTube 비디오 정보
+  videoId         String   // YouTube 비디오 ID
+  videoType       String   // 'short' | 'video'
+
+  // 메타데이터
+  title           String
+  description     String   @db.String
+  thumbnailUrl    String
+  publishedAt     DateTime // 비디오 발행일
+  duration        String   // ISO 8601 duration (예: PT1M30S)
+
+  // 통계
+  viewCount       Int
+  likeCount       Int
+  commentCount    Int
+  engagementRate  Float    // (likes + comments) / views
+
+  // 채널 정보
+  channelId       String
+  channelTitle    String
+  channelThumbnailUrl String?
+  subscriberCount Int
+  videoCount      Int
+
+  // Trending 정보
+  regionCode      String   // KR, US, JP, TW, VN, GLOBAL
+  categoryId      String?  // 카테고리 ID (null이면 'all')
+  rank            Int      // 순위 (1-50)
+
+  // 메타 정보
+  collectedAt     DateTime @default(now()) // 수집 시각
+
+  // 복합 인덱스: 차트 조회 시 사용
+  @@index([regionCode, categoryId, videoType, collectedAt])
+  @@index([videoId, collectedAt]) // 중복 체크용
+
+  @@map("trending_videos")
+}

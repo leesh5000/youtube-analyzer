@@ -27,8 +27,8 @@
     "toggleMenu": "Toggle menu"
   },
   "home": {
-    "title": "YouTube Analyzer",
-    "subtitle": "Analyze channel performance and get insights",
+    "title": "YouTube Trending Dashboard",
+    "subtitle": "Discover trending videos and channels at a glance",
     "searchPlaceholder": "Search for a channel to analyze",
     "searchDescription": "Search for a channel name and start analyzing",
     "newSearch": "New Search",
@@ -38,7 +38,38 @@
     "errorMessage": "Unable to load channel information. Please try again.",
     "retryButton": "Search Again",
     "footer": "YouTube Analyzer - Powered by YouTube Data API v3",
-    "copyright": "© 2024 YouTube Analyzer. All rights reserved."
+    "copyright": "© 2024 YouTube Analyzer. All rights reserved.",
+    "trendingByCategory": "Trending by Category",
+    "viewAll": "View All",
+    "loading": "Loading...",
+    "error": "Failed to load data",
+    "noVideos": "No videos available",
+    "topShorts": "Top Shorts",
+    "topVideos": "Top Videos",
+    "categoryRankings": "Category Rankings",
+    "rankings": {
+      "topVideos": "Most Viewed Videos",
+      "risingVideos": "Rising Videos",
+      "highEngagement": "High Engagement Videos",
+      "topChannels": "Top Channels",
+      "activeChannels": "Active Channels",
+      "subscriberSurge": "Subscriber Surge",
+      "latestTrending": "Latest Trending Videos"
+    },
+    "periods": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "all": "All"
+    },
+    "metrics": {
+      "views": "Views",
+      "subscribers": "Subscribers",
+      "engagement": "Engagement",
+      "ratio": "Ratio",
+      "growth": "Growth",
+      "trendingCount": "Trending Videos"
+    }
   },
   "search": {
     "inputPlaceholder": "Search for a channel name...",

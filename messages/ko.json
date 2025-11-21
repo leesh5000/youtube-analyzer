@@ -27,8 +27,8 @@
     "toggleMenu": "메뉴 열기"
   },
   "home": {
-    "title": "YouTube Analyzer",
-    "subtitle": "채널 성과를 분석하고 인사이트를 제공합니다",
+    "title": "YouTube 트렌드 대시보드",
+    "subtitle": "실시간 인기 동영상과 채널을 한눈에 확인하세요",
     "searchPlaceholder": "분석할 채널을 검색하세요",
     "searchDescription": "채널 이름을 검색하고 분석을 시작하세요",
     "newSearch": "새로운 검색",
@@ -38,7 +38,38 @@
     "errorMessage": "채널 정보를 불러올 수 없습니다. 다시 시도해주세요.",
     "retryButton": "다시 검색하기",
     "footer": "YouTube Analyzer - Powered by YouTube Data API v3",
-    "copyright": "© 2024 YouTube Analyzer. All rights reserved."
+    "copyright": "© 2024 YouTube Analyzer. All rights reserved.",
+    "trendingByCategory": "카테고리별 인기 순위",
+    "viewAll": "전체 보기",
+    "loading": "로딩 중...",
+    "error": "데이터를 불러올 수 없습니다",
+    "noVideos": "영상이 없습니다",
+    "topShorts": "인기 Shorts",
+    "topVideos": "인기 영상",
+    "categoryRankings": "카테고리별 순위",
+    "rankings": {
+      "topVideos": "최다 조회 영상",
+      "risingVideos": "떠오르는 영상",
+      "highEngagement": "참여율 높은 영상",
+      "topChannels": "인기 채널",
+      "activeChannels": "활발한 채널",
+      "subscriberSurge": "구독자 급상승",
+      "latestTrending": "실시간 인기 영상"
+    },
+    "periods": {
+      "daily": "일간",
+      "weekly": "주간",
+      "monthly": "월간",
+      "all": "전체"
+    },
+    "metrics": {
+      "views": "조회수",
+      "subscribers": "구독자",
+      "engagement": "참여율",
+      "ratio": "비율",
+      "growth": "증가",
+      "trendingCount": "트렌딩 영상"
+    }
   },
   "search": {
     "inputPlaceholder": "채널 이름을 검색하세요...",

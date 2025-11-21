@@ -2,127 +2,141 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChannelSearch } from '@/components/ChannelSearch';
-import { ChannelInfo } from '@/components/ChannelInfo';
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
-import { VideoList } from '@/components/VideoList';
-import { useChannelAnalysis } from '@/hooks/useChannelAnalysis';
-import { Loader2, Youtube } from 'lucide-react';
+import { useHomeRankings } from '@/hooks/useHomeRankings';
+import { VideoRankingCard } from '@/components/Home/VideoRankingCard';
+import { ChannelRankingCard } from '@/components/Home/ChannelRankingCard';
+import { HorizontalVideoScroll } from '@/components/Home/HorizontalVideoScroll';
+
+type VideoType = 'shorts' | 'videos';
+type Period = 'daily' | 'weekly' | 'monthly' | 'all';
 
 export default function Home() {
   const t = useTranslations();
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null
-  );
+  const [videoType, setVideoType] = useState<VideoType>('shorts');
+  const [period, setPeriod] = useState<Period>('all');
 
-  const { data, isLoading, error } = useChannelAnalysis(selectedChannelId);
+  // Fetch ranking data
+  const { data, isLoading } = useHomeRankings(videoType, period);
 
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-  };
-
-  const handleReset = () => {
-    setSelectedChannelId(null);
-  };
+  const rankings = data?.rankings;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <div className="p-1.5 sm:p-2 bg-red-600 rounded-lg flex-shrink-0">
-                <Youtube className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
-                  {t('home.title')}
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                  {t('home.subtitle')}
-                </p>
-              </div>
-            </div>
-            {selectedChannelId && (
-              <button
-                onClick={handleReset}
-                className="px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex-shrink-0"
-              >
-                <span className="hidden sm:inline">{t('home.newSearch')}</span>
-                <span className="sm:hidden">{t('home.newSearchShort')}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!selectedChannelId ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="text-center mb-6 sm:mb-8 px-4">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-                {t('home.searchPlaceholder')}
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600">
-                {t('home.searchDescription')}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {t('home.title')}
+              </h1>
+              <p className="mt-1 text-sm text-gray-600">
+                {t('home.subtitle')}
               </p>
             </div>
-            <ChannelSearch onChannelSelect={handleChannelSelect} />
-          </div>
-        ) : (
-          <>
-            {isLoading && (
-              <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <p className="text-gray-600">{t('home.analyzing')}</p>
-              </div>
-            )}
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                <p className="text-red-600 font-semibold mb-2">
-                  {t('home.errorTitle')}
-                </p>
-                <p className="text-red-500 text-sm">
-                  {t('home.errorMessage')}
-                </p>
+            {/* Video Type Tabs */}
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={handleReset}
-                  className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  onClick={() => setVideoType('shorts')}
+                  className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    videoType === 'shorts'
+                      ? 'border-red-500 text-red-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
                 >
-                  {t('home.retryButton')}
+                  {t('home.topShorts')}
                 </button>
-              </div>
-            )}
+                <button
+                  onClick={() => setVideoType('videos')}
+                  className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    videoType === 'videos'
+                      ? 'border-red-500 text-red-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {t('home.topVideos')}
+                </button>
+              </nav>
+            </div>
 
-            {data && (
-              <div className="space-y-6">
-                {/* 채널 정보 */}
-                <ChannelInfo channel={data.channel} />
+            {/* Period Filter */}
+            <div className="flex gap-2">
+              {(['daily', 'weekly', 'monthly', 'all'] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    period === p
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {t(`home.periods.${p}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
-                {/* 분석 대시보드 */}
-                <AnalyticsDashboard
-                  analytics={data.analytics}
-                  performance={data.performance}
-                />
+      {/* Content Section - 3x2 Grid Layout */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {/* Row 1: Video Rankings */}
+          <VideoRankingCard
+            title={t('home.rankings.topVideos')}
+            videos={rankings?.topVideos || []}
+            metricKey="views"
+            isLoading={isLoading}
+          />
+          <VideoRankingCard
+            title={t('home.rankings.risingVideos')}
+            videos={rankings?.risingVideos || []}
+            metricKey="ratio"
+            isLoading={isLoading}
+          />
+          <VideoRankingCard
+            title={t('home.rankings.highEngagement')}
+            videos={rankings?.highEngagement || []}
+            metricKey="engagement"
+            isLoading={isLoading}
+          />
 
-                {/* 비디오 리스트 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <VideoList topVideos={data.topVideos} type="top" />
-                  <VideoList hiddenGems={data.hiddenGems} type="hidden" />
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+          {/* Row 2: Channel Rankings */}
+          <ChannelRankingCard
+            title={t('home.rankings.topChannels')}
+            channels={rankings?.topChannels || []}
+            metricKey="subscribers"
+            isLoading={isLoading}
+          />
+          <ChannelRankingCard
+            title={t('home.rankings.activeChannels')}
+            channels={rankings?.activeChannels || []}
+            metricKey="trendingCount"
+            isLoading={isLoading}
+          />
+          <ChannelRankingCard
+            title={t('home.rankings.subscriberSurge')}
+            channels={rankings?.subscriberSurge || []}
+            metricKey="growth"
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Horizontal Scroll Section */}
+        <HorizontalVideoScroll
+          title={t('home.rankings.latestTrending')}
+          videos={rankings?.latestTrending || []}
+          isLoading={isLoading}
+        />
+      </div>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <p className="text-center text-gray-600 text-xs sm:text-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <p className="text-center text-gray-600 text-sm">
             {t('home.footer')}
           </p>
         </div>

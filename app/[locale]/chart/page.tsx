@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTrendingShorts, ShortData } from '@/hooks/useTrendingShorts';
 import { useTrendingVideos, VideoData } from '@/hooks/useTrendingVideos';
@@ -11,18 +11,33 @@ import {
   RegionCode,
   PeriodFilter,
 } from '@/components/Chart/ChartFilters';
+import { format, parseISO, startOfDay, endOfDay, addDays } from 'date-fns';
 
 type VideoType = 'shorts' | 'videos';
 type CombinedVideoData = (ShortData | VideoData) & { isShort?: boolean };
 
+// Get today's date in yyyy-MM-dd format
+const getTodayDateString = () => format(new Date(), 'yyyy-MM-dd');
+
 export default function ChartPage() {
   const t = useTranslations('chart');
-  const [regionCode, setRegionCode] = useState<RegionCode>('KR');
+  // 초기값: 전체/전세계/일간/오늘날짜
+  const [regionCode, setRegionCode] = useState<RegionCode>('GLOBAL');
   const [videoType, setVideoType] = useState<VideoType>('shorts');
   const [showHiddenGemsOnly, setShowHiddenGemsOnly] = useState(false);
   const [category, setCategory] = useState<CategoryId>('all');
-  const [period, setPeriod] = useState<PeriodFilter>('all');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PeriodFilter>('daily');
+  const [selectedDate, setSelectedDate] = useState<string | null>(getTodayDateString());
+
+  // Reset selectedDate when period changes to 'all'
+  useEffect(() => {
+    if (period === 'all') {
+      setSelectedDate(null);
+    } else if (!selectedDate) {
+      // If period is not 'all' but no date selected, set to today
+      setSelectedDate(getTodayDateString());
+    }
+  }, [period, selectedDate]);
 
   // Convert category to videoCategoryId
   const videoCategoryId = category === 'all' ? undefined : category;
@@ -31,128 +46,88 @@ export default function ChartPage() {
     data: shortsData,
     isLoading: shortsLoading,
     error: shortsError,
-    fetchNextPage: fetchNextShortsPage,
-    hasNextPage: hasNextShortsPage,
-    isFetchingNextPage: isFetchingNextShortsPage,
-  } = useTrendingShorts(regionCode, videoCategoryId);
+  } = useTrendingShorts(regionCode, videoCategoryId, period);
 
   const {
     data: videosData,
     isLoading: videosLoading,
     error: videosError,
-    fetchNextPage: fetchNextVideosPage,
-    hasNextPage: hasNextVideosPage,
-    isFetchingNextPage: isFetchingNextVideosPage,
-  } = useTrendingVideos(regionCode, videoCategoryId);
+  } = useTrendingVideos(regionCode, videoCategoryId, period);
 
   const isLoading = videoType === 'shorts' ? shortsLoading : videosLoading;
   const error = videoType === 'shorts' ? shortsError : videosError;
-  const isFetchingMore = videoType === 'shorts' ? isFetchingNextShortsPage : isFetchingNextVideosPage;
-  const hasNextPage = videoType === 'shorts' ? hasNextShortsPage : hasNextVideosPage;
-  const fetchNextPage = videoType === 'shorts' ? fetchNextShortsPage : fetchNextVideosPage;
 
   // Get current videos based on selected type
   const currentVideos = useMemo(() => {
     let videos: CombinedVideoData[] = [];
 
     if (videoType === 'shorts') {
-      const allShorts = shortsData?.pages.flatMap(page => page.shorts) || [];
+      const allShorts = shortsData?.shorts || [];
       videos = allShorts.map(s => ({ ...s, isShort: true }));
     } else {
-      const allVideos = videosData?.pages.flatMap(page => page.videos) || [];
+      const allVideos = videosData?.videos || [];
       videos = allVideos.map(v => ({ ...v, isShort: false }));
     }
 
     return videos;
-  }, [shortsData?.pages, videosData?.pages, videoType]);
+  }, [shortsData, videosData, videoType]);
 
-  // Apply filters: period/date filter and hidden gems
+  // Apply filters: date and hidden gems
   const filteredVideos = useMemo(() => {
     let videos = [...currentVideos];
 
-    // 1. Period and date filter
-    if (period !== 'all' || selectedDate) {
-      const now = new Date();
+    // Date filter
+    if (selectedDate && period !== 'all') {
+      const selectedDateObj = parseISO(selectedDate);
 
       videos = videos.filter(video => {
-        const publishedDate = new Date(video.publishedAt);
+        const publishedAt = parseISO(video.publishedAt);
 
-        // If specific date is selected
-        if (selectedDate) {
-          const parts = selectedDate.split('.');
-
-          switch (period) {
-            case 'daily': {
-              // Filter by specific day
-              const [year, month, day] = parts;
-              const targetDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-              const videoDate = new Date(publishedDate.getFullYear(), publishedDate.getMonth(), publishedDate.getDate());
-              return videoDate.getTime() === targetDate.getTime();
-            }
-
-            case 'weekly': {
-              // Filter by week starting from the selected date
-              const [year, month, day] = parts;
-              const weekStart = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-              const weekEnd = new Date(weekStart);
-              weekEnd.setDate(weekEnd.getDate() + 7);
-              return publishedDate >= weekStart && publishedDate < weekEnd;
-            }
-
-            case 'monthly': {
-              // Filter by specific month
-              const [year, month] = parts;
-              return publishedDate.getFullYear() === parseInt(year) &&
-                     publishedDate.getMonth() === parseInt(month) - 1;
-            }
-
-            case 'yearly': {
-              // Filter by specific year
-              const year = parts[0];
-              return publishedDate.getFullYear() === parseInt(year);
-            }
-
-            case 'yearEnd': {
-              // Filter by December of specific year
-              const [year] = parts;
-              return publishedDate.getFullYear() === parseInt(year) &&
-                     publishedDate.getMonth() === 11; // December
-            }
-
-            default:
-              return true;
-          }
-        }
-
-        // If no specific date selected, filter by period
-        let cutoffDate: Date;
         switch (period) {
-          case 'daily':
-            cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            break;
-          case 'weekly':
-            cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            break;
-          case 'monthly':
-            cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            break;
-          case 'yearly':
-            cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-            break;
-          case 'yearEnd':
-            // Year-end: December of current year
-            const currentYear = now.getFullYear();
-            cutoffDate = new Date(currentYear, 11, 1); // December 1st
-            return publishedDate >= cutoffDate;
+          case 'daily': {
+            // Same day
+            const dayStart = startOfDay(selectedDateObj);
+            const dayEnd = endOfDay(selectedDateObj);
+            return publishedAt >= dayStart && publishedAt <= dayEnd;
+          }
+
+          case 'weekly': {
+            // 7 days starting from selected Monday
+            const weekEnd = addDays(selectedDateObj, 7);
+            return publishedAt >= selectedDateObj && publishedAt < weekEnd;
+          }
+
+          case 'monthly': {
+            // Same month and year
+            const videoMonth = publishedAt.getMonth();
+            const videoYear = publishedAt.getFullYear();
+            const selectedMonth = selectedDateObj.getMonth();
+            const selectedYear = selectedDateObj.getFullYear();
+            return videoMonth === selectedMonth && videoYear === selectedYear;
+          }
+
+          case 'yearly': {
+            // Same year
+            const videoYear = publishedAt.getFullYear();
+            const selectedYear = selectedDateObj.getFullYear();
+            return videoYear === selectedYear;
+          }
+
+          case 'yearEnd': {
+            // December of selected year
+            const videoMonth = publishedAt.getMonth();
+            const videoYear = publishedAt.getFullYear();
+            const selectedYear = selectedDateObj.getFullYear();
+            return videoMonth === 11 && videoYear === selectedYear; // December = month 11
+          }
+
           default:
             return true;
         }
-
-        return publishedDate >= cutoffDate;
       });
     }
 
-    // 2. Hidden gems filter
+    // Hidden gems filter
     if (showHiddenGemsOnly) {
       videos = videos.filter(video => {
         const subscriberCount = video.channel?.subscriberCount || 0;
@@ -163,7 +138,7 @@ export default function ChartPage() {
     }
 
     return videos;
-  }, [currentVideos, period, selectedDate, showHiddenGemsOnly]);
+  }, [currentVideos, showHiddenGemsOnly, selectedDate, period]);
 
   const hiddenGemsCount = useMemo(() => {
     return currentVideos.filter(video => {
@@ -274,18 +249,6 @@ export default function ChartPage() {
             error={error ? error.message : undefined}
           />
 
-          {/* Load More Button */}
-          {!isLoading && hasNextPage && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingMore}
-                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {isFetchingMore ? t('loading') : t('loadMore')}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

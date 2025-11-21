@@ -83,9 +83,9 @@ export function VideoTable({ videos, isLoading, error }: VideoTableProps) {
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return null;
     return sortOrder === 'asc' ? (
-      <ChevronUp className="w-4 h-4 inline ml-1" />
+      <ChevronUp className="w-4 h-4 ml-1" />
     ) : (
-      <ChevronDown className="w-4 h-4 inline ml-1" />
+      <ChevronDown className="w-4 h-4 ml-1" />
     );
   };
 
@@ -122,11 +122,13 @@ export function VideoTable({ videos, isLoading, error }: VideoTableProps) {
           <tr>
             {/* Rank */}
             <th
-              className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('rank')}
             >
-              {t('table.rank')}
-              <SortIcon field="rank" />
+              <div className="flex items-center justify-center">
+                {t('table.rank')}
+                <SortIcon field="rank" />
+              </div>
             </th>
 
             {/* Video */}
@@ -136,56 +138,68 @@ export function VideoTable({ videos, isLoading, error }: VideoTableProps) {
 
             {/* Views - Hidden on mobile */}
             <th
-              className="hidden md:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="hidden md:table-cell px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('views')}
             >
-              {t('table.views')}
-              <SortIcon field="views" />
+              <div className="flex items-center justify-end">
+                {t('table.views')}
+                <SortIcon field="views" />
+              </div>
             </th>
 
             {/* Subscribers - Hidden on mobile */}
             <th
-              className="hidden md:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="hidden md:table-cell px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('subscribers')}
             >
-              {t('table.subscribers')}
-              <SortIcon field="subscribers" />
+              <div className="flex items-center justify-end">
+                {t('table.subscribers')}
+                <SortIcon field="subscribers" />
+              </div>
             </th>
 
             {/* Ratio - Always visible */}
             <th
-              className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('ratio')}
             >
-              {t('table.ratio')}
-              <SortIcon field="ratio" />
+              <div className="flex items-center justify-end">
+                {t('table.ratio')}
+                <SortIcon field="ratio" />
+              </div>
             </th>
 
             {/* Likes - Hidden on mobile */}
             <th
-              className="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="hidden lg:table-cell px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('likes')}
             >
-              {t('table.likes')}
-              <SortIcon field="likes" />
+              <div className="flex items-center justify-end">
+                {t('table.likes')}
+                <SortIcon field="likes" />
+              </div>
             </th>
 
             {/* Comments - Hidden on mobile */}
             <th
-              className="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="hidden lg:table-cell px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('comments')}
             >
-              {t('table.comments')}
-              <SortIcon field="comments" />
+              <div className="flex items-center justify-end">
+                {t('table.comments')}
+                <SortIcon field="comments" />
+              </div>
             </th>
 
             {/* Published Date - Hidden on mobile */}
             <th
-              className="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
+              className="hidden lg:table-cell px-4 py-3 text-xs font-semibold text-gray-700 uppercase cursor-pointer hover:bg-gray-100"
               onClick={() => handleSort('publishedAt')}
             >
-              {t('table.publishedAt')}
-              <SortIcon field="publishedAt" />
+              <div className="flex items-center justify-end">
+                {t('table.publishedAt')}
+                <SortIcon field="publishedAt" />
+              </div>
             </th>
           </tr>
         </thead>
